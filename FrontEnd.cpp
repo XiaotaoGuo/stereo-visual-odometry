@@ -1,0 +1,377 @@
+//
+// Created by guoxt on 19-8-25.
+//
+
+#include "FrontEnd.h"
+#include <opencv2/opencv.hpp>
+
+FrontEnd::FrontEnd() {
+    gftt_ = cv::GFTTDetector::create(100, 0.01, 20);
+    num_init = 100;
+    num_ = 100;
+}
+
+void FrontEnd::AddFrame(Frame::Ptr frame) {
+    current_frame_ = frame;
+
+    switch (status_){
+        case INIT:
+            StereoINit();
+            break;
+        case TRACKING_GOOD:
+        case TRACKING_BAD:
+            Track();
+            break;
+        case LOST:
+            Reset();
+            break;
+    }
+
+    previous_frame_ = current_frame_;
+}
+
+bool FrontEnd::Track() {
+    if(previous_frame_){
+        current_frame_->SetPose(relative_motion * previous_frame_->Pose());
+    }
+
+    int num_track_last = TrackLastFrame();
+    current_tracking_ = EstimateCurrentPose();
+
+    if(current_tracking_ > num_tracking_high){
+        status_ = TRACKING_GOOD;
+    }
+    else if(current_tracking_ > num_tracking_low){
+        status_ = TRACKING_BAD;
+    }
+    else{
+        status_ = LOST;
+    }
+
+    InsertKeyframe();
+    relative_motion = current_frame_->Pose() * previous_frame_->Pose().inverse();
+    //if(viewer_) viewer_->AddCurrentFrame(current_frame_);
+}
+
+bool FrontEnd::InsertKeyframe() {
+    if(current_tracking_ > num_keyframe){
+        return false;
+    }
+
+    current_frame_->SetKeyFrame();
+    map_->InsertKeyFrame(current_frame_);
+
+    cout << "Set frame: " << current_frame_->id_ << "as a keyframe: " << current_frame_->keyframe_id_ << endl;
+
+    SetObservationsForKeyFrame();
+    DetectFeatures();
+
+    FindFeaturesInRight();
+    TriangulateNewPoints();
+
+    //backend_->updateMap();
+
+    //if(viewer_) viewer_->AddCurrentFrame(current_frame_);
+}
+
+void FrontEnd::SetObservationsForKeyFrame() {
+    for(auto &feature : current_frame_->left_features_){
+        auto map_point = feature->map_point_.lock();
+        if(map_point)
+            map_point->AddObservation(feature);
+    }
+}
+
+int FrontEnd::TriangulateNewPoints() {
+    vector<Sophus::SE3d> pose{left_camera_->pose(), right_camera_->pose()};
+
+    Sophus::SE3d cam2world = current_frame_->Pose().inverse();
+    int cnt_triangulated_pts = 0;
+    for(int i = 0; i < current_frame_->left_features_.size(); i++){
+        if (current_frame_->left_features_[i]->map_point_.expired() &&
+            current_frame_->right_features_[i] != nullptr) {
+
+            vector<Eigen::Vector3d> points{
+                    left_camera_->pixel2camera(
+                            Eigen::Vector2d(current_frame_->left_features_[i]->position_.pt.x,
+                                 current_frame_->left_features_[i]->position_.pt.y)),
+                    right_camera_->pixel2camera(
+                            Eigen::Vector2d(current_frame_->right_features_[i]->position_.pt.x,
+                                 current_frame_->right_features_[i]->position_.pt.y))};
+            Eigen::Vector3d pworld = Eigen::Vector3d::Zero();
+
+            if (triangulation(poses, points, pworld) && pworld[2] > 0) {
+                auto new_map_point = MapPoint::CreateNewMappoint();
+                pworld = cam2world * pworld;//?
+                new_map_point->setPos(pworld);
+                new_map_point->AddObservation(
+                        current_frame_->left_features_[i]);
+                new_map_point->AddObservation(
+                        current_frame_->right_features_[i]);
+
+                current_frame_->left_features_[i]->map_point_ = new_map_point;
+                current_frame_->right_features_[i]->map_point_ = new_map_point;
+                map_->InsertMapPoint(new_map_point);
+                cnt_triangulated_pts++;
+            }
+        }
+    }
+    cout << "new landmarks found: " << cnt_triangulated_pts;
+    return cnt_triangulated_pts;
+
+}
+
+int FrontEnd::EstimateCurrentPose() {
+    // setup g2o
+    typedef g2o::BlockSolver_6_3 BlockSolverType;
+    typedef g2o::LinearSolverDense<BlockSolverType::PoseMatrixType>
+            LinearSolverType;
+    auto solver = new g2o::OptimizationAlgorithmLevenberg(
+            g2o::make_unique<BlockSolverType>(
+                    g2o::make_unique<LinearSolverType>()));
+    g2o::SparseOptimizer optimizer;
+    optimizer.setAlgorithm(solver);
+
+    // vertex
+    VertexPose *vertex_pose = new VertexPose();  // camera vertex_pose
+    vertex_pose->setId(0);
+    vertex_pose->setEstimate(current_frame_->Pose());
+    optimizer.addVertex(vertex_pose);
+
+    // K
+    Eigen::Matrix3d K = left_camera_->K();
+
+    // edges
+    int index = 1;
+    std::vector<EdgeProjectionPoseOnly *> edges;
+    std::vector<Feature::Ptr> features;
+    for (size_t i = 0; i < current_frame_->left_features_.size(); ++i) {
+        auto mp = current_frame_->left_features_[i]->map_point_.lock();
+        if (mp) {
+            features.push_back(current_frame_->left_features_[i]);
+            EdgeProjectionPoseOnly *edge =
+                    new EdgeProjectionPoseOnly(mp->pos_, K);
+            edge->setId(index);
+            edge->setVertex(0, vertex_pose);
+            edge->setMeasurement(
+                    toVec2(current_frame_->left_features_[i]->position_.pt));
+            edge->setInformation(Eigen::Matrix2d::Identity());
+            edge->setRobustKernel(new g2o::RobustKernelHuber);
+            edges.push_back(edge);
+            optimizer.addEdge(edge);
+            index++;
+        }
+    }
+
+    // estimate the Pose the determine the outliers
+    const double chi2_th = 5.991;
+    int cnt_outlier = 0;
+    for (int iteration = 0; iteration < 4; ++iteration) {
+        vertex_pose->setEstimate(current_frame_->Pose());
+        optimizer.initializeOptimization();
+        optimizer.optimize(10);
+        cnt_outlier = 0;
+
+        // count the outliers
+        for (size_t i = 0; i < edges.size(); ++i) {
+            auto e = edges[i];
+            if (features[i]->is_outlier) {
+                e->computeError();
+            }
+            if (e->chi2() > chi2_th) {
+                features[i]->is_outlier = true;
+                e->setLevel(1);
+                cnt_outlier++;
+            } else {
+                features[i]->is_outlier = false;
+                e->setLevel(0);
+            };
+
+            if (iteration == 2) {
+                e->setRobustKernel(nullptr);
+            }
+        }
+    }
+
+    cout << "Outlier/Inlier in pose estimating: " << cnt_outlier << "/"
+              << features.size() - cnt_outlier;
+    // Set pose and outlier
+    current_frame_->SetPose(vertex_pose->estimate());
+
+    cout << "Current Pose = \n" << current_frame_->Pose().matrix();
+
+    for (auto &feat : features) {
+        if (feat->is_outlier) {
+            feat->map_point_.reset();
+            feat->is_outlier = false;  // maybe we can still use it in future
+        }
+    }
+    return features.size() - cnt_outlier;
+}
+
+int FrontEnd::TrackLastFrame() {
+    // use LK flow to estimate points in the right image
+    std::vector<cv::Point2f> kps_last, kps_current;
+    for (auto &kp : previous_frame_->left_features_) {
+        if (kp->map_point_.lock()) {
+            // use project point
+            auto mp = kp->map_point_.lock();
+            auto px =
+                    left_camera_->world2pixel(mp->pos_, current_frame_->Pose());
+            kps_last.push_back(kp->position_.pt);
+            kps_current.push_back(cv::Point2f(px[0], px[1]));
+        } else {
+            kps_last.push_back(kp->position_.pt);
+            kps_current.push_back(kp->position_.pt);
+        }
+    }
+
+    std::vector<uchar> status;
+    cv::Mat error;
+    cv::calcOpticalFlowPyrLK(
+            previous_frame_->left_img_, current_frame_->left_img_, kps_last,
+            kps_current, status, error, cv::Size(11, 11), 3,
+            cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
+                             0.01),
+            cv::OPTFLOW_USE_INITIAL_FLOW);
+
+    int num_good_pts = 0;
+
+    for (size_t i = 0; i < status.size(); ++i) {
+        if (status[i]) {
+            cv::KeyPoint kp(kps_current[i], 7);
+            Feature::Ptr feature(new Feature(current_frame_, kp));
+            feature->map_point_ = previous_frame_->left_features_[i]->map_point_;
+            current_frame_->left_features_.push_back(feature);
+            num_good_pts++;
+        }
+    }
+
+    cout << "Find " << num_good_pts << " in the last image.";
+    return num_good_pts;
+}
+
+bool FrontEnd::StereoInit() {
+    int num_features_left = DetectFeatures();
+    int num_coor_features = FindFeaturesInRight();
+    if (num_coor_features < num_init) {
+        return false;
+    }
+
+    bool build_map_success = BuildInitMap();
+    if (build_map_success) {
+        status_ = TRACKING_GOOD;
+        /*
+        if (viewer_) {
+            viewer_->AddCurrentFrame(current_frame_);
+            viewer_->UpdateMap();
+        }
+         */
+        return true;
+    }
+    return false;
+}
+
+int FrontEnd::DetectFeatures() {
+    cv::Mat mask(current_frame_->left_img_.size(), CV_8UC1, 255);
+    for (auto &feat : current_frame_->left_features_) {
+        cv::rectangle(mask, feat->position_.pt - cv::Point2f(10, 10),
+                      feat->position_.pt + cv::Point2f(10, 10), 0, CV_FILLED);
+    }
+
+    std::vector<cv::KeyPoint> keypoints;
+    gftt_->detect(current_frame_->left_img_, keypoints, mask);
+    int cnt_detected = 0;
+    for (auto &kp : keypoints) {
+        current_frame_->left_features_.push_back(
+                Feature::Ptr(new Feature(current_frame_, kp)));
+        cnt_detected++;
+    }
+
+    cout << "Detect " << cnt_detected << " new features";
+    return cnt_detected;
+}
+
+int FrontEnd::FindFeaturesInRight() {
+    // use LK flow to estimate points in the right image
+    std::vector<cv::Point2f> kps_left, kps_right;
+    for (auto &kp : current_frame_->left_features_) {
+        kps_left.push_back(kp->position_.pt);
+        auto mp = kp->map_point_.lock();
+        if (mp) {
+            // use projected points as initial guess
+            auto px =
+                    right_camera_->world2pixel(mp->pos_, current_frame_->Pose());
+            kps_right.push_back(cv::Point2f(px[0], px[1]));
+        } else {
+            // use same pixel in left iamge
+            kps_right.push_back(kp->position_.pt);
+        }
+    }
+
+    std::vector<uchar> status;
+    cv::Mat error;
+    cv::calcOpticalFlowPyrLK(
+            current_frame_->left_img_, current_frame_->right_img_, kps_left,
+            kps_right, status, error, cv::Size(11, 11), 3,
+            cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30,
+                             0.01),
+            cv::OPTFLOW_USE_INITIAL_FLOW);
+
+    int num_good_pts = 0;
+    for (size_t i = 0; i < status.size(); ++i) {
+        if (status[i]) {
+            cv::KeyPoint kp(kps_right[i], 7);
+            Feature::Ptr feat(new Feature(current_frame_, kp));
+            feat->is_on_left_image_ = false;
+            current_frame_->right_features_.push_back(feat);
+            num_good_pts++;
+        } else {
+            current_frame_->right_features_.push_back(nullptr);
+        }
+    }
+    cout << "Find " << num_good_pts << " in the right image.";
+    return num_good_pts;
+}
+
+bool FrontEnd::BuildInitMap() {
+    std::vector<Sophus::SE3d> poses{left_camera_->pose(), right_camera_->pose()};
+    size_t cnt_init_landmarks = 0;
+    for (size_t i = 0; i < current_frame_->left_features_.size(); ++i) {
+        if (current_frame_->right_features_[i] == nullptr) continue;
+        // create map point from triangulation
+        std::vector<Eigen::Vector3d> points{
+                left_camera_->pixel2camera(
+                        Eigen::Vector2d(current_frame_->left_features_[i]->position_.pt.x,
+                             current_frame_->left_features_[i]->position_.pt.y)),
+                right_camera_->pixel2camera(
+                        Eigen::Vector2d(current_frame_->right_features_[i]->position_.pt.x,
+                             current_frame_->right_features_[i]->position_.pt.y))};
+        Eigen::Vector3d pworld = Eigen::Vector3d::Zero();
+
+        if (triangulation(poses, points, pworld) && pworld[2] > 0) {
+            auto new_map_point = MapPoint::CreateNewMappoint();
+            new_map_point->setPos(pworld);
+            new_map_point->AddObservation(current_frame_->left_features_[i]);
+            new_map_point->AddObservation(current_frame_->right_features_[i]);
+            current_frame_->left_features_[i]->map_point_ = new_map_point;
+            current_frame_->right_features_[i]->map_point_ = new_map_point;
+            cnt_init_landmarks++;
+            map_->InsertMapPoint(new_map_point);
+        }
+    }
+    current_frame_->SetKeyFrame();
+    map_->InsertKeyFrame(current_frame_);
+    //backend_->updateMap();
+
+    cout << "Initial map created with " << cnt_init_landmarks
+              << " map points";
+
+    return true;
+}
+
+bool FrontEnd::Reset() {
+    cout << "Reset is not implemented. ";
+    return true;
+}
+
