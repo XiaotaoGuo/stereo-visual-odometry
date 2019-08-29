@@ -21,9 +21,9 @@ public:
     void stop();
 
 private:
-    void BackendLoop();
+    void BackEndLoop();
 
-    void Optimize(KeyframeType& keyframes, LandmarkType landmarks);
+    void Optimize(Map::KeyframeType& keyframes, Map::LandmarkType& landmarks);
     shared_ptr<Map> map_;
     thread backend_thread_;
     mutex data_mutex_;

@@ -4,17 +4,17 @@
 
 #include "BackEnd.h"
 
-Backend::Backend() {
+BackEnd::BackEnd() {
     backend_running_.store(true);
-    backend_thread_ = std::thread(std::bind(&Backend::BackendLoop, this));
+    backend_thread_ = std::thread(std::bind(&BackEnd::BackEndLoop, this));
 }
 
-void BackEnd::UpdateMap() {
+void BackEnd::updateMap() {
     std::unique_lock<std::mutex> lock(data_mutex_);
     map_update_.notify_one();
 }
 
-void BackEnd::Stop() {
+void BackEnd::stop() {
     backend_running_.store(false);
     map_update_.notify_one();
     backend_thread_.join();
@@ -26,14 +26,14 @@ void BackEnd::BackEndLoop() {
         map_update_.wait(lock);
 
         /// 后端仅优化激活的Frames和Landmarks
-        Map::KeyframesType active_kfs = map_->GetActiveKeyFrames();
-        Map::LandmarksType active_landmarks = map_->GetActiveMapPoints();
+        Map::KeyframeType active_kfs = map_->GetActiveKeyFrames();
+        Map::LandmarkType active_landmarks = map_->GetActiveMapPoints();
         Optimize(active_kfs, active_landmarks);
     }
 }
 
-void BackEnd::Optimize(Map::KeyframesType &keyframes,
-                       Map::LandmarksType &landmarks) {
+void BackEnd::Optimize(Map::KeyframeType &keyframes,
+                       Map::LandmarkType &landmarks) {
     // setup g2o
     typedef g2o::BlockSolver_6_3 BlockSolverType;
     typedef g2o::LinearSolverCSparse<BlockSolverType::PoseMatrixType>
@@ -64,23 +64,23 @@ void BackEnd::Optimize(Map::KeyframesType &keyframes,
     std::map<unsigned long, VertexXYZ *> vertices_landmarks;
 
     // K 和左右外参
-    Mat33 K = cam_left_->K();
-    SE3 left_ext = cam_left_->pose();
-    SE3 right_ext = cam_right_->pose();
+    Eigen::Matrix3d K = cam_left_->K();
+    Sophus::SE3d left_ext = cam_left_->pose();
+    Sophus::SE3d right_ext = cam_right_->pose();
 
     // edges
     int index = 1;
     double chi2_th = 5.991;  // robust kernel 阈值
-    std::map<EdgeProjection *, FeaturePtr> edges_and_features;
+    std::map<EdgeProjection *, Feature::Ptr> edges_and_features;
 
     for (auto &landmark : landmarks) {
         if (landmark.second->is_outlier_) continue;
         unsigned long landmark_id = landmark.second->id_;
-        auto observations = landmark.second->GetObs();
+        auto observations = landmark.second->getObservations();
         for (auto &obs : observations) {
             if (obs.lock() == nullptr) continue;
             auto feat = obs.lock();
-            if (feat->is_outlier_ || feat->frame_.lock() == nullptr) continue;
+            if (feat->is_outlier || feat->frame_.lock() == nullptr) continue;
 
             auto frame = feat->frame_.lock();
             EdgeProjection *edge = nullptr;
@@ -104,8 +104,10 @@ void BackEnd::Optimize(Map::KeyframesType &keyframes,
             edge->setId(index);
             edge->setVertex(0, vertices.at(frame->keyframe_id_));    // pose
             edge->setVertex(1, vertices_landmarks.at(landmark_id));  // landmark
-            edge->setMeasurement(toVec2(feat->position_.pt));
-            edge->setInformation(Mat22::Identity());
+            cv::Point2d pt(feat->position_.pt);
+            Eigen::Vector2d pt_(pt.x, pt.y);
+            edge->setMeasurement(pt_);
+            edge->setInformation(Eigen::Matrix2d::Identity());
             auto rk = new g2o::RobustKernelHuber();
             rk->setDelta(chi2_th);
             edge->setRobustKernel(rk);
@@ -145,22 +147,22 @@ void BackEnd::Optimize(Map::KeyframesType &keyframes,
 
     for (auto &ef : edges_and_features) {
         if (ef.first->chi2() > chi2_th) {
-            ef.second->is_outlier_ = true;
+            ef.second->is_outlier = true;
             // remove the observation
             ef.second->map_point_.lock()->RemoveObservation(ef.second);
         } else {
-            ef.second->is_outlier_ = false;
+            ef.second->is_outlier = false;
         }
     }
 
-    LOG(INFO) << "Outlier/Inlier in optimization: " << cnt_outlier << "/"
-              << cnt_inlier;
+    cout << "Outlier/Inlier in optimization: " << cnt_outlier << "/"
+              << cnt_inlier << endl;
 
     // Set pose and lanrmark position
     for (auto &v : vertices) {
         keyframes.at(v.first)->SetPose(v.second->estimate());
     }
     for (auto &v : vertices_landmarks) {
-        landmarks.at(v.first)->SetPos(v.second->estimate());
+        landmarks.at(v.first)->setPos(v.second->estimate());
     }
 }

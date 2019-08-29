@@ -49,6 +49,7 @@
 #include "Frame.h"
 #include "Map.h"
 #include "MapPoint.h"
+#include "g2o_types.h"
 
 
 using namespace std;

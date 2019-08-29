@@ -4,6 +4,7 @@
 
 #include "FrontEnd.h"
 #include <opencv2/opencv.hpp>
+#include "BackEnd.h"
 
 FrontEnd::FrontEnd() {
     gftt_ = cv::GFTTDetector::create(100, 0.01, 20);
@@ -16,7 +17,7 @@ void FrontEnd::AddFrame(Frame::Ptr frame) {
 
     switch (status_){
         case INIT:
-            StereoINit();
+            StereoInit();
             break;
         case TRACKING_GOOD:
         case TRACKING_BAD:
@@ -69,7 +70,7 @@ bool FrontEnd::InsertKeyframe() {
     FindFeaturesInRight();
     TriangulateNewPoints();
 
-    //backend_->updateMap();
+    backend_->updateMap();
 
     //if(viewer_) viewer_->AddCurrentFrame(current_frame_);
 }
@@ -83,7 +84,7 @@ void FrontEnd::SetObservationsForKeyFrame() {
 }
 
 int FrontEnd::TriangulateNewPoints() {
-    vector<Sophus::SE3d> pose{left_camera_->pose(), right_camera_->pose()};
+    vector<Sophus::SE3d> poses{left_camera_->pose(), right_camera_->pose()};
 
     Sophus::SE3d cam2world = current_frame_->Pose().inverse();
     int cnt_triangulated_pts = 0;
@@ -116,7 +117,7 @@ int FrontEnd::TriangulateNewPoints() {
             }
         }
     }
-    cout << "new landmarks found: " << cnt_triangulated_pts;
+    cout << "new landmarks found: " << cnt_triangulated_pts << endl;
     return cnt_triangulated_pts;
 
 }
@@ -153,8 +154,9 @@ int FrontEnd::EstimateCurrentPose() {
                     new EdgeProjectionPoseOnly(mp->pos_, K);
             edge->setId(index);
             edge->setVertex(0, vertex_pose);
-            edge->setMeasurement(
-                    toVec2(current_frame_->left_features_[i]->position_.pt));
+            cv::Point2d pt = current_frame_->left_features_[i]->position_.pt;
+            Eigen::Vector2d pt_(pt.x, pt.y);
+            edge->setMeasurement(pt_);
             edge->setInformation(Eigen::Matrix2d::Identity());
             edge->setRobustKernel(new g2o::RobustKernelHuber);
             edges.push_back(edge);
@@ -330,7 +332,7 @@ int FrontEnd::FindFeaturesInRight() {
             current_frame_->right_features_.push_back(nullptr);
         }
     }
-    cout << "Find " << num_good_pts << " in the right image.";
+    cout << "Find " << num_good_pts << " in the right image." << endl;
     return num_good_pts;
 }
 
@@ -362,10 +364,10 @@ bool FrontEnd::BuildInitMap() {
     }
     current_frame_->SetKeyFrame();
     map_->InsertKeyFrame(current_frame_);
-    //backend_->updateMap();
+    backend_->updateMap();
 
     cout << "Initial map created with " << cnt_init_landmarks
-              << " map points";
+              << " map points" << endl;
 
     return true;
 }
@@ -373,5 +375,25 @@ bool FrontEnd::BuildInitMap() {
 bool FrontEnd::Reset() {
     cout << "Reset is not implemented. ";
     return true;
+}
+
+bool FrontEnd::triangulation(const vector<Sophus::SE3d> &poses, const vector<Eigen::Vector3d> points,
+                             Eigen::Vector3d &pWorlds) {
+    Eigen::MatrixXd A(2 * poses.size(), 4);
+    Eigen::VectorXd b(2 * poses.size());
+    b.setZero();
+    for (size_t i = 0; i < poses.size(); ++i) {
+        Eigen::Matrix<double, 3, 4> m = poses[i].matrix3x4();
+        A.block<1, 4>(2 * i, 0) = points[i][0] * m.row(2) - m.row(0);
+        A.block<1, 4>(2 * i + 1, 0) = points[i][1] * m.row(2) - m.row(1);
+    }
+    auto svd = A.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
+    pWorlds = (svd.matrixV().col(3) / svd.matrixV()(3, 3)).head<3>();
+
+    if (svd.singularValues()[3] / svd.singularValues()[2] < 1e-2) {
+        // 解质量不好，放弃
+        return true;
+    }
+    return false;
 }
 

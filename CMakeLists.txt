@@ -56,7 +56,7 @@ set(G2O_LIBS g2o_cli g2o_ext_freeglut_minimal g2o_simulator g2o_solver_slam2d_li
 
 add_executable(vo vo.cpp
         FrontEnd.cpp
-        #BackEnd.cpp
+        BackEnd.cpp
         Feature.cpp
         Frame.cpp
         Map.cpp

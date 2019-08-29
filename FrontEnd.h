@@ -8,12 +8,13 @@
 #include "config.h"
 #include <opencv2/features2d.hpp>
 
+
 #define INIT 0
 #define TRACKING_GOOD 1
 #define TRACKING_BAD 2
 #define LOST 3
 
-//class BackEnd;
+class BackEnd;
 
 class Camera;
 class Frame;
@@ -42,7 +43,7 @@ private:
     shared_ptr<Frame> current_frame_, previous_frame_;
     shared_ptr<Camera> left_camera_, right_camera_;
     shared_ptr<Map> map_;
-    //BackEnd::Ptr backend_;
+    shared_ptr<BackEnd> backend_;
 
     int current_tracking_;
 
@@ -61,12 +62,13 @@ private:
     int TrackLastFrame();
     int EstimateCurrentPose();
     bool InsertKeyframe();
-    bool StereoINit();
+    bool StereoInit();
     int DetectFeatures();
     int FindFeaturesInRight();
     bool BuildInitMap();
     int TriangulateNewPoints();
     void SetObservationsForKeyFrame();
+    bool triangulation(const vector<Sophus::SE3d>& poses, const vector<Eigen::Vector3d> points, Eigen::Vector3d& pWorlds);
 
 
 
