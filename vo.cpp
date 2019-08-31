@@ -3,17 +3,19 @@
 //
 
 #include "config.h"
-
-
+#include "Visual_odometry.h"
 
 int main(int argc, char** argv){
-    string dataset_path = argv[1];
-    stringstream left_img_path, right_img_path, calib_path;
-    left_img_path << dataset_path << "image_0/";
-    right_img_path << dataset_path << "image_1/";
-    calib_path << dataset_path << "calib.txt";
 
-    readCalib();
+    shared_ptr<Visual_odometry> vo = shared_ptr<Visual_odometry>(new Visual_odometry);
+    vo->init();
+
+    assert(vo->Init() == true);
+    vo->start();
+
+
+
+    return 0;
 
 }
 

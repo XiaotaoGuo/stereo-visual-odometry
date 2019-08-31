@@ -5,25 +5,31 @@
 #ifndef STEORO_VISUAL_ODOMETRY_BACKEND_H
 #define STEORO_VISUAL_ODOMETRY_BACKEND_H
 
+#include <thread>
 #include "config.h"
+#include "Camera.h"
+#include "Map.h"
 
-class BackEnd;
+class Map;
 
 class BackEnd {
 public:
+
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     typedef shared_ptr<BackEnd> Ptr;
 
     BackEnd();
 
     void setCameras(shared_ptr<Camera> left, shared_ptr<Camera> right);
+    void setMap(shared_ptr<Map> map);
     void updateMap();
     void stop();
 
 private:
     void BackEndLoop();
 
-    void Optimize(Map::KeyframeType& keyframes, Map::LandmarkType& landmarks);
+    void Optimize(KeyframeType& keyframes, LandmarkType& landmarks);
     shared_ptr<Map> map_;
     thread backend_thread_;
     mutex data_mutex_;

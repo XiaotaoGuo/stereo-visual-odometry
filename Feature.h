@@ -20,7 +20,7 @@ public:
     weak_ptr<MapPoint> map_point_;
 
     bool is_outlier = false;
-    bool is_on_left_image_ = false;
+    bool is_on_left_image_ = true;
 
     Feature();
     Feature(shared_ptr<Frame> frame, const cv::KeyPoint &kp);

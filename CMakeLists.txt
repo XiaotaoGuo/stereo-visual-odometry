@@ -62,7 +62,8 @@ add_executable(vo vo.cpp
         Map.cpp
         MapPoint.cpp
         Camera.cpp
-        )
+        viewer.cpp
+        Visual_odometry.cpp Visual_odometry.h)
 
 target_link_libraries(vo
         ${G2O_LIBS}

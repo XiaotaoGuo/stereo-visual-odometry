@@ -12,8 +12,8 @@ class Map {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     typedef shared_ptr<Map> Ptr;
-    typedef unordered_map<unsigned long, shared_ptr<MapPoint>> LandmarkType;
-    typedef unordered_map<unsigned long, shared_ptr<Frame>> KeyframeType;
+    //typedef unordered_map<unsigned long, shared_ptr<MapPoint>> LandmarkType;
+    //typedef unordered_map<unsigned long, shared_ptr<Frame>> KeyframeType;
 
     Map();
 

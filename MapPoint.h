@@ -17,11 +17,11 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     typedef shared_ptr<MapPoint> Ptr;
 
-    unsigned long id_;
-    bool is_outlier_;
-    Eigen::Vector3d pos_;
+    unsigned long id_ = 0;
+    bool is_outlier_ = false;
+    Eigen::Vector3d pos_ = Eigen::Vector3d::Zero();
     mutex data_mutex_;
-    int observed_times_;
+    int observed_times_ = 0;
     list<weak_ptr<Feature>> observations_;
 
     MapPoint();

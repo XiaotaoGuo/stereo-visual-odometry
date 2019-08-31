@@ -3,10 +3,19 @@
 //
 
 #include "BackEnd.h"
+#include "Map.h"
 
 BackEnd::BackEnd() {
     backend_running_.store(true);
     backend_thread_ = std::thread(std::bind(&BackEnd::BackEndLoop, this));
+}
+
+void BackEnd::setCameras(shared_ptr<Camera> left, shared_ptr<Camera> right) {
+    cam_left_ = left;
+    cam_right_ = right;
+}
+void BackEnd::setMap(shared_ptr<Map> map) {
+    map_ = map;
 }
 
 void BackEnd::updateMap() {
@@ -26,14 +35,14 @@ void BackEnd::BackEndLoop() {
         map_update_.wait(lock);
 
         /// 后端仅优化激活的Frames和Landmarks
-        Map::KeyframeType active_kfs = map_->GetActiveKeyFrames();
-        Map::LandmarkType active_landmarks = map_->GetActiveMapPoints();
+        KeyframeType active_kfs = map_->GetActiveKeyFrames();
+        LandmarkType active_landmarks = map_->GetActiveMapPoints();
         Optimize(active_kfs, active_landmarks);
     }
 }
 
-void BackEnd::Optimize(Map::KeyframeType &keyframes,
-                       Map::LandmarkType &landmarks) {
+void BackEnd::Optimize(KeyframeType &keyframes,
+                       LandmarkType &landmarks) {
     // setup g2o
     typedef g2o::BlockSolver_6_3 BlockSolverType;
     typedef g2o::LinearSolverCSparse<BlockSolverType::PoseMatrixType>
@@ -60,6 +69,7 @@ void BackEnd::Optimize(Map::KeyframeType &keyframes,
         vertices.insert({kf->keyframe_id_, vertex_pose});
     }
 
+
     // 路标顶点，使用路标id索引
     std::map<unsigned long, VertexXYZ *> vertices_landmarks;
 
@@ -71,7 +81,7 @@ void BackEnd::Optimize(Map::KeyframeType &keyframes,
     // edges
     int index = 1;
     double chi2_th = 5.991;  // robust kernel 阈值
-    std::map<EdgeProjection *, Feature::Ptr> edges_and_features;
+    std::map<EdgeProjection *, shared_ptr<Feature>> edges_and_features;
 
     for (auto &landmark : landmarks) {
         if (landmark.second->is_outlier_) continue;
@@ -114,7 +124,6 @@ void BackEnd::Optimize(Map::KeyframeType &keyframes,
             edges_and_features.insert({edge, feat});
 
             optimizer.addEdge(edge);
-
             index++;
         }
     }

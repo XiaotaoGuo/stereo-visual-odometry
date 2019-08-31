@@ -18,6 +18,9 @@
 #include <typeinfo>
 #include <unordered_map>
 #include <vector>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 // define the commonly included file to avoid a long include list
 #include <Eigen/Core>
@@ -42,7 +45,7 @@
 
 
 // include self-defined class
-//#include "BackEnd.h"
+#include "BackEnd.h"
 #include "Camera.h"
 #include "FrontEnd.h"
 #include "Feature.h"
@@ -50,9 +53,23 @@
 #include "Map.h"
 #include "MapPoint.h"
 #include "g2o_types.h"
+#include "viewer.h"
 
 
 using namespace std;
+
+class Frame;
+class Feature;
+class Map;
+class MapPoint;
+class Camera;
+
+typedef unordered_map<unsigned long, shared_ptr<MapPoint>> LandmarkType;
+typedef unordered_map<unsigned long, shared_ptr<Frame>> KeyframeType;
+typedef shared_ptr<Frame> FramePtr;
+typedef shared_ptr<Map> MapPtr;
+typedef shared_ptr<Camera> CamPtr;
+typedef shared_ptr<Feature> FeaturePtr;
 
 /*
 typedef Frame::Ptr FramePtr;

@@ -8,11 +8,12 @@
 
 Map::Map() {}
 
-void Map::InsertKeyFrame(Frame::Ptr frame) {
+void Map::InsertKeyFrame(FramePtr frame) {
     current_frame_ = frame;
     if(keyframes_.find(frame->keyframe_id_) == keyframes_.end()){
         keyframes_.insert(make_pair(frame->keyframe_id_, frame));
         active_keyframes_.insert(make_pair(frame->keyframe_id_, frame));
+        cout << "added keyframe" << endl;
     }
     else{
         keyframes_[frame->keyframe_id_] = frame;
@@ -24,7 +25,7 @@ void Map::InsertKeyFrame(Frame::Ptr frame) {
     }
 }
 
-void Map::InsertMapPoint(MapPoint::Ptr mappoint) {
+void Map::InsertMapPoint(shared_ptr<MapPoint> mappoint) {
     if(landmarks_.find(mappoint->id_) == landmarks_.end()){
         landmarks_.insert(make_pair(mappoint->id_, mappoint));
         active_landmarks_.insert(make_pair(mappoint->id_, mappoint));
@@ -36,23 +37,23 @@ void Map::InsertMapPoint(MapPoint::Ptr mappoint) {
 
 }
 
-Map::LandmarkType Map::GetAllMapPoints() {
+LandmarkType Map::GetAllMapPoints() {
     unique_lock<mutex> lck(data_mutex);
     return landmarks_;
 }
 
-Map::KeyframeType Map::GetAllKeyframes() {
+KeyframeType Map::GetAllKeyframes() {
     unique_lock<mutex> lck(data_mutex);
     return keyframes_;
 }
 
-Map::LandmarkType Map::GetActiveMapPoints(){
+LandmarkType Map::GetActiveMapPoints(){
     unique_lock<std::mutex> lck(data_mutex);
     return active_landmarks_;
 }
 
-Map::KeyframeType Map::GetActiveKeyFrames() {
-    unique_lock<std::mutex> lck(data_mutex);
+KeyframeType Map::GetActiveKeyFrames() {
+    unique_lock<mutex> lck(data_mutex);
     return active_keyframes_;
 }
 
@@ -76,7 +77,7 @@ void Map::RemoveOldKeyframe() {
     }
 
     const double min_dis_th = 0.2;  // threshold for nearest frame
-    Frame::Ptr frame_to_remove = nullptr;
+    FramePtr frame_to_remove = nullptr;
     if (min_dis < min_dis_th) {
         // perfer delete nearest frame
         frame_to_remove = keyframes_.at(min_kf_id);
