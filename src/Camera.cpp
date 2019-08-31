@@ -1,10 +1,20 @@
-//
-// Created by guoxt on 19-8-25.
-//
-
 #include "Camera.h"
 
 Camera::Camera() {
+}
+
+Camera::Camera(double fx, double fy, double cx, double cy, double baseline,
+       const Sophus::SE3d &pose)
+        : fx_(fx), fy_(fy), cx_(cx), cy_(cy), baseline_(baseline), pose_(pose) {
+    pose_inv_ = pose_.inverse();
+}
+
+Sophus::SE3d Camera::pose() const { return pose_; }
+
+Eigen::Matrix3d Camera::K() const {
+    Eigen::Matrix3d k;
+    k << fx_, 0, cx_, 0, fy_, cy_, 0, 0, 1;
+    return k;
 }
 
 Eigen::Vector3d Camera::world2camera(const Eigen::Vector3d &p_w, const Sophus::SE3d &T_c_w) {

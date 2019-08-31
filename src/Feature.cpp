@@ -1,7 +1,3 @@
-//
-// Created by guoxt on 19-8-24.
-//
-
 #include "Feature.h"
 
 Feature::Feature() {}

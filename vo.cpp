@@ -13,8 +13,6 @@ int main(int argc, char** argv){
     assert(vo->Init() == true);
     vo->start();
 
-
-
     return 0;
 
 }

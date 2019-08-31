@@ -46,7 +46,8 @@ include_directories(${EIGEN3_INCLUDE_DIR}
                     ${OpenCV_INCLUDE_DIRS}
                     ${Pangolin_INCLUDE_DIRS}
                     ${G2O_INCLUDE_DIR}
-                    ${CHOLMOD_INCLUDE_DIR})
+                    ${CHOLMOD_INCLUDE_DIR}
+                    include)
 
 # for g2o, we manually set its libs
 set(G2O_LIBS g2o_cli g2o_ext_freeglut_minimal g2o_simulator g2o_solver_slam2d_linear
@@ -55,15 +56,15 @@ set(G2O_LIBS g2o_cli g2o_ext_freeglut_minimal g2o_simulator g2o_solver_slam2d_li
         g2o_stuff g2o_types_sclam2d g2o_parser g2o_solver_pcg g2o_types_data g2o_types_sim3 cxsparse)
 
 add_executable(vo vo.cpp
-        FrontEnd.cpp
-        BackEnd.cpp
-        Feature.cpp
-        Frame.cpp
-        Map.cpp
-        MapPoint.cpp
-        Camera.cpp
-        viewer.cpp
-        Visual_odometry.cpp Visual_odometry.h)
+        src/FrontEnd.cpp
+        src/BackEnd.cpp
+        src/Feature.cpp
+        src/Frame.cpp
+        src/Map.cpp
+        src/MapPoint.cpp
+        src/Camera.cpp
+        src/viewer.cpp
+        src/Visual_odometry.cpp)
 
 target_link_libraries(vo
         ${G2O_LIBS}

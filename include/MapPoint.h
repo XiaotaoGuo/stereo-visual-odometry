@@ -1,7 +1,3 @@
-//
-// Created by guoxt on 19-8-24.
-//
-
 #ifndef STEORO_VISUAL_ODOMETRY_MAPPOINT_H
 #define STEORO_VISUAL_ODOMETRY_MAPPOINT_H
 
@@ -15,7 +11,6 @@ class Frame;
 class MapPoint {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    typedef shared_ptr<MapPoint> Ptr;
 
     unsigned long id_ = 0;
     bool is_outlier_ = false;
@@ -30,12 +25,12 @@ public:
     Eigen::Vector3d Pos();
     void setPos(const Eigen::Vector3d &pos);
 
-    void AddObservation(shared_ptr<Feature> feature);
-    void RemoveObservation(shared_ptr<Feature> feature);
+    void addObservation(shared_ptr<Feature> feature);
+    void removeObservation(shared_ptr<Feature> feature);
 
     list<weak_ptr<Feature>> getObservations();
 
-    static MapPoint::Ptr CreateNewMappoint();
+    static MapPointPtr createNewMappoint();
 };
 
 

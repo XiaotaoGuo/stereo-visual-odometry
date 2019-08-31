@@ -1,6 +1,3 @@
-//
-// Created by guoxt on 19-8-31.
-//
 
 #include "Visual_odometry.h"
 #include <boost/format.hpp>
@@ -14,10 +11,10 @@ bool Visual_odometry::init() {
     map_ = shared_ptr<Map>(new Map);
     viewer_ = shared_ptr<Viewer>(new Viewer);
     init_camera();
-    frontend_->SetBackend(backend_);
-    frontend_->SetViewer(viewer_);
-    frontend_->SetMap(map_);
-    frontend_->SetCameras(cam1_, cam2_);
+    frontend_->setBackend(backend_);
+    frontend_->setViewer(viewer_);
+    frontend_->setMap(map_);
+    frontend_->setCameras(cam1_, cam2_);
     viewer_->SetMap(map_);
 
     backend_->setMap(map_);
@@ -68,8 +65,6 @@ void Visual_odometry::start() {
         }
     }
 
-
-
     backend_->stop();
     viewer_->Close();
 
@@ -81,10 +76,8 @@ bool Visual_odometry::forward() {
     cv::Mat left_image, right_image;
     boost::format fmt("%s/image_%d/%06d.png");
     string dataset_path = "/home/guoxt/Downloads/data_odometry_gray/dataset/sequences/00/";
-    left_image = cv::imread((fmt % dataset_path % 0 % current_index).str(),
-                            cv::IMREAD_GRAYSCALE);
-    right_image = cv::imread((fmt % dataset_path % 1 % current_index).str(),
-                            cv::IMREAD_GRAYSCALE);
+    left_image = cv::imread((fmt % dataset_path % 0 % current_index).str(), cv::IMREAD_GRAYSCALE);
+    right_image = cv::imread((fmt % dataset_path % 1 % current_index).str(), cv::IMREAD_GRAYSCALE);
     if(!left_image.cols) return false;
     cv::Mat image_left_resized, image_right_resized;
     cv::resize(left_image, image_left_resized, cv::Size(), 0.5, 0.5,
@@ -97,7 +90,7 @@ bool Visual_odometry::forward() {
     new_frame->right_img_ = image_right_resized;
     current_index++;
 
-    bool success = frontend_->AddFrame(new_frame);
+    bool success = frontend_->addFrame(new_frame);
 
     return success;
 }

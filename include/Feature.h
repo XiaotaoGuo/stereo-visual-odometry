@@ -13,7 +13,6 @@ class MapPoint;
 class Feature {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    typedef shared_ptr<Feature> Ptr;
 
     weak_ptr<Frame> frame_;
     cv::KeyPoint position_;

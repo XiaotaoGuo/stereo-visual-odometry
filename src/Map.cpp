@@ -1,19 +1,23 @@
-//
-// Created by guoxt on 19-8-24.
-//
-
 #include "Map.h"
 #include "Frame.h"
 #include "MapPoint.h"
 
 Map::Map() {}
 
-void Map::InsertKeyFrame(FramePtr frame) {
+void Map::insertFrame(FramePtr frame){
+    if(frames_.find(frame->id_) == frames_.end()){
+        frames_.insert(make_pair(frame->id_, frame));
+    }
+    else{ //basically won't be used
+        keyframes_[frame->id_] = frame;
+    }
+}
+
+void Map::insertKeyFrame(FramePtr frame) {
     current_frame_ = frame;
     if(keyframes_.find(frame->keyframe_id_) == keyframes_.end()){
         keyframes_.insert(make_pair(frame->keyframe_id_, frame));
         active_keyframes_.insert(make_pair(frame->keyframe_id_, frame));
-        cout << "added keyframe" << endl;
     }
     else{
         keyframes_[frame->keyframe_id_] = frame;
@@ -21,11 +25,11 @@ void Map::InsertKeyFrame(FramePtr frame) {
     }
 
     if(active_keyframes_.size() > num_active_keyframes_){
-        RemoveOldKeyframe();
+        removeOldKeyframe();
     }
 }
 
-void Map::InsertMapPoint(shared_ptr<MapPoint> mappoint) {
+void Map::insertMapPoint(shared_ptr<MapPoint> mappoint) {
     if(landmarks_.find(mappoint->id_) == landmarks_.end()){
         landmarks_.insert(make_pair(mappoint->id_, mappoint));
         active_landmarks_.insert(make_pair(mappoint->id_, mappoint));
@@ -37,27 +41,32 @@ void Map::InsertMapPoint(shared_ptr<MapPoint> mappoint) {
 
 }
 
-LandmarkType Map::GetAllMapPoints() {
+LandmarkType Map::getAllMapPoints() {
     unique_lock<mutex> lck(data_mutex);
     return landmarks_;
 }
 
-KeyframeType Map::GetAllKeyframes() {
+FrameType Map::getAllKeyframes() {
     unique_lock<mutex> lck(data_mutex);
     return keyframes_;
 }
 
-LandmarkType Map::GetActiveMapPoints(){
+LandmarkType Map::getActiveMapPoints(){
     unique_lock<std::mutex> lck(data_mutex);
     return active_landmarks_;
 }
 
-KeyframeType Map::GetActiveKeyFrames() {
+FrameType Map::getActiveKeyFrames() {
     unique_lock<mutex> lck(data_mutex);
     return active_keyframes_;
 }
 
-void Map::RemoveOldKeyframe() {
+FrameType Map::getAllFrames() {
+    unique_lock<mutex> lck(data_mutex);
+    return frames_;
+}
+
+void Map::removeOldKeyframe() {
     if (current_frame_ == nullptr) return;
     // find nearest (or furthest if can't find the near frame) frame to delete
     double max_dis = 0, min_dis = INT_MAX;
@@ -92,21 +101,21 @@ void Map::RemoveOldKeyframe() {
     for (auto feat : frame_to_remove->left_features_) {
         auto mp = feat->map_point_.lock();
         if (mp) {
-            mp->RemoveObservation(feat);
+            mp->removeObservation(feat);
         }
     }
     for (auto feat : frame_to_remove->right_features_) {
         if (feat == nullptr) continue;
         auto mp = feat->map_point_.lock();
         if (mp) {
-            mp->RemoveObservation(feat);
+            mp->removeObservation(feat);
         }
     }
 
-    CleanMap();
+    cleanMap();
 }
 
-void Map::CleanMap() {
+void Map::cleanMap() {
     int cnt_landmark_removed = 0;
     for (auto iter = active_landmarks_.begin();iter != active_landmarks_.end();) {
         if (iter->second->observed_times_ == 0) {

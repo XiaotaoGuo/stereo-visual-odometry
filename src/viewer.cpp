@@ -1,6 +1,3 @@
-//
-// Created by gaoxiang on 19-5-4.
-//
 #include "viewer.h"
 #include "Feature.h"
 #include "Frame.h"
@@ -9,7 +6,7 @@
 #include <opencv2/opencv.hpp>
 
 Viewer::Viewer() {
-    viewer_thread_ = std::thread(std::bind(&Viewer::ThreadLoop, this));
+    viewer_thread_ = thread(bind(&Viewer::ThreadLoop, this));
 }
 
 void Viewer::Close() {
@@ -17,21 +14,21 @@ void Viewer::Close() {
     viewer_thread_.join();
 }
 
-void Viewer::AddCurrentFrame(Frame::Ptr current_frame) {
-    std::unique_lock<std::mutex> lck(viewer_data_mutex_);
+void Viewer::AddCurrentFrame(FramePtr current_frame) {
+    unique_lock<mutex> lck(viewer_data_mutex_);
     current_frame_ = current_frame;
 }
 
 void Viewer::UpdateMap() {
-    std::unique_lock<std::mutex> lck(viewer_data_mutex_);
+    unique_lock<mutex> lck(viewer_data_mutex_);
     assert(map_ != nullptr);
-    active_keyframes_ = map_->GetActiveKeyFrames();
-    active_landmarks_ = map_->GetActiveMapPoints();
+    active_keyframes_ = map_->getActiveKeyFrames();
+    active_landmarks_ = map_->getActiveMapPoints();
     map_updated_ = true;
 }
 
 void Viewer::ThreadLoop() {
-    pangolin::CreateWindowAndBind("MySLAM", 1024, 768);
+    pangolin::CreateWindowAndBind("SLAM", 1024, 768);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -54,7 +51,7 @@ void Viewer::ThreadLoop() {
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         vis_display.Activate(vis_camera);
 
-        std::unique_lock<std::mutex> lock(viewer_data_mutex_);
+        unique_lock<mutex> lock(viewer_data_mutex_);
         if (current_frame_) {
             DrawFrame(current_frame_, green);
             FollowCurrentFrame(vis_camera);
@@ -81,8 +78,7 @@ cv::Mat Viewer::PlotFrameImage() {
     for (size_t i = 0; i < current_frame_->left_features_.size(); ++i) {
         if (current_frame_->left_features_[i]->map_point_.lock()) {
             auto feat = current_frame_->left_features_[i];
-            cv::circle(img_out, feat->position_.pt, 2, cv::Scalar(0, 250, 0),
-                       2);
+            cv::circle(img_out, feat->position_.pt, 2, cv::Scalar(0, 250, 0), 2);
         }
     }
     return img_out;
@@ -94,7 +90,7 @@ void Viewer::FollowCurrentFrame(pangolin::OpenGlRenderState& vis_camera) {
     vis_camera.Follow(m, true);
 }
 
-void Viewer::DrawFrame(Frame::Ptr frame, const float* color) {
+void Viewer::DrawFrame(FramePtr frame, const float* color) {
     Sophus::SE3d Twc = frame->Pose().inverse();
     const float sz = 1.0;
     const int line_width = 2.0;

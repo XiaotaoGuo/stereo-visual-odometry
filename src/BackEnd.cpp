@@ -1,25 +1,21 @@
-//
-// Created by guoxt on 19-8-26.
-//
-
-#include "BackEnd.h"
-#include "Map.h"
+#include "../include/BackEnd.h"
+#include "../include/Map.h"
 
 BackEnd::BackEnd() {
     backend_running_.store(true);
-    backend_thread_ = std::thread(std::bind(&BackEnd::BackEndLoop, this));
+    backend_thread_ = thread(bind(&BackEnd::BackEndLoop, this));
 }
 
-void BackEnd::setCameras(shared_ptr<Camera> left, shared_ptr<Camera> right) {
+void BackEnd::setCameras(CamPtr left, CamPtr right) {
     cam_left_ = left;
     cam_right_ = right;
 }
-void BackEnd::setMap(shared_ptr<Map> map) {
+void BackEnd::setMap(MapPtr map) {
     map_ = map;
 }
 
 void BackEnd::updateMap() {
-    std::unique_lock<std::mutex> lock(data_mutex_);
+    unique_lock<mutex> lock(data_mutex_);
     map_update_.notify_one();
 }
 
@@ -31,17 +27,17 @@ void BackEnd::stop() {
 
 void BackEnd::BackEndLoop() {
     while (backend_running_.load()) {
-        std::unique_lock<std::mutex> lock(data_mutex_);
+        unique_lock<mutex> lock(data_mutex_);
         map_update_.wait(lock);
 
         /// 后端仅优化激活的Frames和Landmarks
-        KeyframeType active_kfs = map_->GetActiveKeyFrames();
-        LandmarkType active_landmarks = map_->GetActiveMapPoints();
+        FrameType active_kfs = map_->getActiveKeyFrames();
+        LandmarkType active_landmarks = map_->getActiveMapPoints();
         Optimize(active_kfs, active_landmarks);
     }
 }
 
-void BackEnd::Optimize(KeyframeType &keyframes,
+void BackEnd::Optimize(FrameType &keyframes,
                        LandmarkType &landmarks) {
     // setup g2o
     typedef g2o::BlockSolver_6_3 BlockSolverType;
@@ -54,7 +50,7 @@ void BackEnd::Optimize(KeyframeType &keyframes,
     optimizer.setAlgorithm(solver);
 
     // pose 顶点，使用Keyframe id
-    std::map<unsigned long, VertexPose *> vertices;
+    map<unsigned long, VertexPose *> vertices;
     unsigned long max_kf_id = 0;
     for (auto &keyframe : keyframes) {
         auto kf = keyframe.second;
@@ -71,7 +67,7 @@ void BackEnd::Optimize(KeyframeType &keyframes,
 
 
     // 路标顶点，使用路标id索引
-    std::map<unsigned long, VertexXYZ *> vertices_landmarks;
+    map<unsigned long, VertexXYZ *> vertices_landmarks;
 
     // K 和左右外参
     Eigen::Matrix3d K = cam_left_->K();
@@ -81,7 +77,7 @@ void BackEnd::Optimize(KeyframeType &keyframes,
     // edges
     int index = 1;
     double chi2_th = 5.991;  // robust kernel 阈值
-    std::map<EdgeProjection *, shared_ptr<Feature>> edges_and_features;
+    map<EdgeProjection *, FeaturePtr> edges_and_features;
 
     for (auto &landmark : landmarks) {
         if (landmark.second->is_outlier_) continue;
@@ -132,20 +128,20 @@ void BackEnd::Optimize(KeyframeType &keyframes,
     optimizer.initializeOptimization();
     optimizer.optimize(10);
 
-    int cnt_outlier = 0, cnt_inlier = 0;
+    int count_outlier = 0, count_inlier = 0;
     int iteration = 0;
     while (iteration < 5) {
-        cnt_outlier = 0;
-        cnt_inlier = 0;
+        count_outlier = 0;
+        count_inlier = 0;
         // determine if we want to adjust the outlier threshold
         for (auto &ef : edges_and_features) {
             if (ef.first->chi2() > chi2_th) {
-                cnt_outlier++;
+                count_outlier++;
             } else {
-                cnt_inlier++;
+                count_inlier++;
             }
         }
-        double inlier_ratio = cnt_inlier / double(cnt_inlier + cnt_outlier);
+        double inlier_ratio = count_inlier / double(count_inlier + count_outlier);
         if (inlier_ratio > 0.5) {
             break;
         } else {
@@ -158,14 +154,13 @@ void BackEnd::Optimize(KeyframeType &keyframes,
         if (ef.first->chi2() > chi2_th) {
             ef.second->is_outlier = true;
             // remove the observation
-            ef.second->map_point_.lock()->RemoveObservation(ef.second);
+            ef.second->map_point_.lock()->removeObservation(ef.second);
         } else {
             ef.second->is_outlier = false;
         }
     }
 
-    cout << "Outlier/Inlier in optimization: " << cnt_outlier << "/"
-              << cnt_inlier << endl;
+    cout << "Outlier/Inlier in optimization: " << count_outlier << "/" << count_inlier << endl;
 
     // Set pose and lanrmark position
     for (auto &v : vertices) {

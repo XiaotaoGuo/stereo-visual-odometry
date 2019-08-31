@@ -1,13 +1,8 @@
-//
-// Created by gaoxiang on 19-5-4.
-//
-
 #ifndef STEORO_VISUAL_ODOMETRY_FRONTEND_G2O_TYPES_H
 #define STEORO_VISUAL_ODOMETRY_FRONTEND_G2O_TYPES_H
 
 
 /// vertex and edges used in g2o ba
-/// 位姿顶点
 class VertexPose : public g2o::BaseVertex<6, Sophus::SE3d> {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
@@ -44,7 +39,7 @@ class VertexXYZ : public g2o::BaseVertex<3, Eigen::Vector3d> {
     virtual bool write(std::ostream &out) const override { return true; }
 };
 
-/// 仅估计位姿的一元边
+
 class EdgeProjectionPoseOnly : public g2o::BaseUnaryEdge<2, Eigen::Vector2d, VertexPose> {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
@@ -86,13 +81,11 @@ class EdgeProjectionPoseOnly : public g2o::BaseUnaryEdge<2, Eigen::Vector2d, Ver
     Eigen::Matrix3d _K;
 };
 
-/// 带有地图和位姿的二元边
 class EdgeProjection
     : public g2o::BaseBinaryEdge<2, Eigen::Vector2d, VertexPose, VertexXYZ> {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-    /// 构造时传入相机内外参
     EdgeProjection(const Eigen::Matrix3d &K, const Sophus::SE3d &cam_ext) : _K(K) {
         _cam_ext = cam_ext;
     }
@@ -137,6 +130,5 @@ class EdgeProjection
     Sophus::SE3d _cam_ext;
 };
 
- // namespace myslam
 
-#endif  // MYSLAM_G2O_TYPES_H
+#endif

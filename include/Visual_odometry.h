@@ -1,7 +1,3 @@
-//
-// Created by guoxt on 19-8-31.
-//
-
 #ifndef STEORO_VISUAL_ODOMETRY_VISUAL_ODOMETRY_H
 #define STEORO_VISUAL_ODOMETRY_VISUAL_ODOMETRY_H
 

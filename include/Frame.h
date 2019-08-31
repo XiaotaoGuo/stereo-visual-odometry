@@ -12,7 +12,6 @@ class Feature;
 class Frame {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    typedef shared_ptr<Frame> Ptr;
 
     unsigned long id_ = 0;
     unsigned long keyframe_id_ = 0;
@@ -35,7 +34,7 @@ public:
     //set to key frame
     void SetKeyFrame();
 
-    static Frame::Ptr CreateFrame();
+    static FramePtr CreateFrame();
 
 
 };

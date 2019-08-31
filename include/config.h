@@ -65,21 +65,9 @@ class MapPoint;
 class Camera;
 
 typedef unordered_map<unsigned long, shared_ptr<MapPoint>> LandmarkType;
-typedef unordered_map<unsigned long, shared_ptr<Frame>> KeyframeType;
+typedef unordered_map<unsigned long, shared_ptr<Frame>> FrameType;
 typedef shared_ptr<Frame> FramePtr;
 typedef shared_ptr<Map> MapPtr;
 typedef shared_ptr<Camera> CamPtr;
 typedef shared_ptr<Feature> FeaturePtr;
-
-/*
-typedef Frame::Ptr FramePtr;
-typedef Feature::Ptr FeaturePtr;
-typedef MapPoint::Ptr MapPointPtr;
-typedef Map::Ptr MapPtr;
-typedef Camera::Ptr CamPtr;
-typedef FrondEnd::Ptr FrondEndPtr;
-typedef BackEnd::Ptr BackEndPtr;
-
-typedef unordered_map<unsigned long, MapPointPtr> LandmarkType;
-typedef unordered_map<unsigned long, FramePtr> KeyframeType;
-*/
+typedef shared_ptr<MapPoint> MapPointPtr;

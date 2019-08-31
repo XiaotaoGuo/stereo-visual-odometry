@@ -1,7 +1,3 @@
-//
-// Created by guoxt on 19-8-24.
-//
-
 #include "Frame.h"
 #include "Feature.h"
 
@@ -24,9 +20,9 @@ void Frame::SetPose(const Sophus::SE3d &pose) {
     pose_ = pose;
 }
 
-Frame::Ptr Frame::CreateFrame() {
+FramePtr Frame::CreateFrame() {
     static long factord_id = 0;
-    Frame::Ptr new_frame(new Frame);
+    FramePtr new_frame(new Frame);
     new_frame->id_ = factord_id++;
     return new_frame;
 }

@@ -7,7 +7,6 @@ class Camera {
 public:
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    typedef std::shared_ptr<Camera> Ptr;
 
     double fx_ = 0, fy_ = 0, cx_ = 0, cy_ = 0,
             baseline_ = 0;  // Camera intrinsics
@@ -16,20 +15,12 @@ public:
 
     Camera();
 
-    Camera(double fx, double fy, double cx, double cy, double baseline,
-           const Sophus::SE3d &pose)
-            : fx_(fx), fy_(fy), cx_(cx), cy_(cy), baseline_(baseline), pose_(pose) {
-        pose_inv_ = pose_.inverse();
-    }
+    Camera(double fx, double fy, double cx, double cy, double baseline, const Sophus::SE3d &pose);
 
-    Sophus::SE3d pose() const { return pose_; }
+    Sophus::SE3d pose() const;
 
     // return intrinsic matrix
-    Eigen::Matrix3d K() const {
-        Eigen::Matrix3d k;
-        k << fx_, 0, cx_, 0, fy_, cy_, 0, 0, 1;
-        return k;
-    }
+    Eigen::Matrix3d K() const;
 
     // coordinate transform: world, camera, pixel
     Eigen::Vector3d world2camera(const Eigen::Vector3d &p_w, const Sophus::SE3d &T_c_w);
