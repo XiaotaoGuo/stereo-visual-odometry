@@ -14,7 +14,7 @@ public:
     Visual_odometry();
 
     bool init_camera();
-    bool init();
+    bool init(string data_path, string seq_id);
     void start();
     bool forward();
     bool stop();
@@ -27,6 +27,9 @@ public:
     shared_ptr<BackEnd> backend_;
     shared_ptr<Viewer> viewer_;
     int current_index;
+
+    string dataset_root_path_;
+    string seq_id_;
 
     bool inited_;
 

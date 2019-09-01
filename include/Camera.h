@@ -35,7 +35,6 @@ public:
 
     Eigen::Vector2d world2pixel(const Eigen::Vector3d &p_w, const Sophus::SE3d &T_c_w);
 
-    //void WordToCam(Sophus::se3 )
 };
 
 

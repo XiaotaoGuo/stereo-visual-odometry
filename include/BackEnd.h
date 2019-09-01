@@ -6,7 +6,7 @@
 #include "Camera.h"
 #include "Map.h"
 
-class Map;
+//class Map;
 
 class BackEnd {
 public:

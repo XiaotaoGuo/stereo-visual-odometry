@@ -1,5 +1,5 @@
-#include "../include/BackEnd.h"
-#include "../include/Map.h"
+#include "BackEnd.h"
+#include "Map.h"
 
 BackEnd::BackEnd() {
     backend_running_.store(true);
