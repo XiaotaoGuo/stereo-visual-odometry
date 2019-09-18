@@ -9,7 +9,7 @@ class VertexPose : public g2o::BaseVertex<6, Sophus::SE3d> {
 
     virtual void setToOriginImpl() override { _estimate = Sophus::SE3d(); }
 
-    /// left multiplication on Sophus::SE3d
+    /// left multiplication
     virtual void oplusImpl(const double *update) override {
         Eigen::Matrix<double, 6, 1> update_eigen;
         update_eigen << update[0], update[1], update[2], update[3], update[4],
@@ -22,7 +22,7 @@ class VertexPose : public g2o::BaseVertex<6, Sophus::SE3d> {
     virtual bool write(std::ostream &out) const override { return true; }
 };
 
-/// 路标顶点
+/// Mappoint Vertex
 class VertexXYZ : public g2o::BaseVertex<3, Eigen::Vector3d> {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
@@ -64,12 +64,17 @@ class EdgeProjectionPoseOnly : public g2o::BaseUnaryEdge<2, Eigen::Vector2d, Ver
         double X = pos_cam[0];
         double Y = pos_cam[1];
         double Z = pos_cam[2];
-        double Zinv = 1.0 / (Z + 1e-18);
+        double Zinv = 1.0 / (Z + 1e-18);//to avoid overfloating
         double Zinv2 = Zinv * Zinv;
-        _jacobianOplusXi << -fx * Zinv, 0, fx * X * Zinv2, fx * X * Y * Zinv2,
-            -fx - fx * X * X * Zinv2, fx * Y * Zinv, 0, -fy * Zinv,
-            fy * Y * Zinv2, fy + fy * Y * Y * Zinv2, -fy * X * Y * Zinv2,
-            -fy * X * Zinv;
+        double XY = X*Y;
+        double X2 = X*X;
+        double Y2 = Y*Y;
+        Eigen::Matrix<double, 2, 6> dedxi;
+        dedxi << -fx * Zinv, 0, fx * X * Zinv2,
+                fx * XY * Zinv2, -fx - fx * X2 * Zinv2, fx * Y * Zinv,
+                0, -fy * Zinv, fy * Y * Zinv2,
+                fy + fy * Y2 * Zinv2, -fy * XY * Zinv2, -fy * X * Zinv;
+        _jacobianOplusXi = dedxi;
     }
 
     virtual bool read(std::istream &in) override { return true; }
@@ -112,12 +117,17 @@ class EdgeProjection
         double Z = pos_cam[2];
         double Zinv = 1.0 / (Z + 1e-18);
         double Zinv2 = Zinv * Zinv;
-        _jacobianOplusXi << -fx * Zinv, 0, fx * X * Zinv2, fx * X * Y * Zinv2,
-            -fx - fx * X * X * Zinv2, fx * Y * Zinv, 0, -fy * Zinv,
-            fy * Y * Zinv2, fy + fy * Y * Y * Zinv2, -fy * X * Y * Zinv2,
-            -fy * X * Zinv;
+        double XY = X*Y;
+        double X2 = X*X;
+        double Y2 = Y*Y;
+        Eigen::Matrix<double, 2, 6> dedxi;
+        dedxi << -fx * Zinv, 0, fx * X * Zinv2,
+                fx * XY * Zinv2, -fx - fx * X2 * Zinv2, fx * Y * Zinv,
+                0, -fy * Zinv, fy * Y * Zinv2,
+                fy + fy * Y2 * Zinv2, -fy * XY * Zinv2, -fy * X * Zinv;
+        _jacobianOplusXi = dedxi;
 
-        _jacobianOplusXj = _jacobianOplusXi.block<2, 3>(0, 0) *
+        _jacobianOplusXj = dedxi.block<2, 3>(0, 0) *
                            _cam_ext.rotationMatrix() * T.rotationMatrix();
     }
 

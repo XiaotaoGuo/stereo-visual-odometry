@@ -80,9 +80,9 @@ private:
     int num_features_needed_for_keyframe_ = 80;
 
     // utilities
-    //cv::Ptr<cv::FastFeatureDetector> gftt_;  // feature detector in opencv
-    //cv::Ptr<cv::GFTTDetector> gftt_;  // feature detector in opencv
-    cv::Ptr<cv::ORB> gftt_;  // feature detector in opencv
+    cv::Ptr<cv::FeatureDetector> detector_;  // feature detector in opencv
+    //cv::Ptr<cv::GFTTDetector> detector_;  // feature detector in opencv
+    //cv::Ptr<cv::ORB> detector_;  // feature detector in opencv
     bool triangulation(const vector<Sophus::SE3d>& poses, const vector<Eigen::Vector3d> points, Eigen::Vector3d& pWorlds);
 
 

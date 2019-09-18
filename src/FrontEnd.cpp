@@ -2,9 +2,9 @@
 #include <opencv2/opencv.hpp>
 
 FrontEnd::FrontEnd() {
-    //gftt_ = cv::GFTTDetector::create(100, 0.01, 20);
-    //gftt_ = cv::FastFeatureDetector::create(50);
-    gftt_ = cv::ORB::create(100);
+    detector_ = cv::GFTTDetector::create(100, 0.01, 20);
+    //detector_ = cv::FastFeatureDetector::create(50);
+    detector_ = cv::ORB::create(100);
     num_features_init_ = 50;
     num_features_ = 100;
 }
@@ -79,7 +79,7 @@ bool FrontEnd::insertKeyFrame() {
     current_frame_->SetKeyFrame();
     map_->insertKeyFrame(current_frame_);
 
-    cout << "Set frame " << current_frame_->id_ << " as keyframe " << current_frame_->keyframe_id_ << endl;
+    //cout << "Set frame " << current_frame_->id_ << " as keyframe " << current_frame_->keyframe_id_ << endl;
 
     setObservationsForKeyFrame();
     detectFeatures();  // detect new features
@@ -132,7 +132,7 @@ int FrontEnd::triangulateNewPoints() {
             }
         }
     }
-    cout << "new landmarks: " << cnt_triangulated_pts << endl;
+    //cout << "new landmarks: " << cnt_triangulated_pts << endl;
     return cnt_triangulated_pts;
 }
 
@@ -207,11 +207,11 @@ int FrontEnd::estimateCurrentPose() {
         }
     }
 
-    cout << "Outlier/Inlier in pose estimating: " << cnt_outlier << "/" << features.size() - cnt_outlier << endl;
+    //cout << "Outlier/Inlier in pose estimating: " << cnt_outlier << "/" << features.size() - cnt_outlier << endl;
     // Set pose and outlier
     current_frame_->SetPose(vertex_pose->estimate());
 
-    cout << "Current Pose = \n" << current_frame_->Pose().matrix() << endl;
+    //cout << "Current Pose = \n" << current_frame_->Pose().matrix() << endl;
 
     for (auto &feat : features) {
         if (feat->is_outlier) {
@@ -229,8 +229,8 @@ int FrontEnd::trackLastFrame() {
         if (kp->map_point_.lock()) {
             // use project point
             auto mp = kp->map_point_.lock();
-            auto px =
-                    left_camera_->world2pixel(mp->pos_, current_frame_->Pose());
+            //project keypoint to image frame
+            auto px =left_camera_->world2pixel(mp->pos_, current_frame_->Pose());
             kps_last.push_back(kp->position_.pt);
             kps_current.push_back(cv::Point2f(px[0], px[1]));
         } else {
@@ -241,6 +241,7 @@ int FrontEnd::trackLastFrame() {
 
     vector<uchar> status;
     cv::Mat error;
+    //calculate optical flow from left image of last frame to left image of current frame
     cv::calcOpticalFlowPyrLK(
             last_frame_->left_img_, current_frame_->left_img_, kps_last,
             kps_current, status, error, cv::Size(11, 11), 3,
@@ -259,7 +260,7 @@ int FrontEnd::trackLastFrame() {
         }
     }
 
-    cout << "Find " << num_good_pts << "goot map points in the last image." << endl;
+    //cout << "Find " << num_good_pts << "good map points in the last image." << endl;
     return num_good_pts;
 }
 
@@ -290,14 +291,14 @@ int FrontEnd::detectFeatures() {
     }
 
     vector<cv::KeyPoint> keypoints;
-    gftt_->detect(current_frame_->left_img_, keypoints, mask);
+    detector_->detect(current_frame_->left_img_, keypoints, mask);
     int cnt_detected = 0;
     for (auto &kp : keypoints) {
         current_frame_->left_features_.push_back(FeaturePtr(new Feature(current_frame_, kp)));
         cnt_detected++;
     }
 
-    cout << "Detect " << cnt_detected << " new features" << endl;
+    //cout << "Detect " << cnt_detected << " new features" << endl;
     return cnt_detected;
 }
 
@@ -339,7 +340,7 @@ int FrontEnd::findFeaturesInRight() {
             current_frame_->right_features_.push_back(nullptr);
         }
     }
-    cout << "Find " << num_good_pts << " in the right image." << endl;
+    //cout << "Find " << num_good_pts << " in the right image." << endl;
     return num_good_pts;
 }
 
@@ -373,7 +374,7 @@ bool FrontEnd::buildInitMap() {
     map_->insertKeyFrame(current_frame_);
     backend_->updateMap();
 
-    cout << "Initial map created with " << cnt_init_landmarks << " map points" << endl;
+    //cout << "Initial map created with " << cnt_init_landmarks << " map points" << endl;
 
     return true;
 }

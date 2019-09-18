@@ -24,7 +24,7 @@ endif()
 
 # add cmake module configuration
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules/g2o)
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules/ceres)
+#list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules/ceres)
 
 find_package(Eigen3 REQUIRED)
 find_package(Sophus REQUIRED)

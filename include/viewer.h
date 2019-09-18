@@ -18,7 +18,7 @@ class Viewer {
 
     Viewer();
 
-    void SetMap(MapPtr map) { map_ = map; }
+    void setMap(MapPtr map) { map_ = map; }
 
     void Close();
 

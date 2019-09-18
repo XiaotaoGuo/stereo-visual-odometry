@@ -95,7 +95,7 @@ void Map::removeOldKeyframe() {
         frame_to_remove = keyframes_.at(max_kf_id);
     }
 
-    cout << "remove keyframe: " << frame_to_remove->keyframe_id_ << endl;
+    //cout << "remove keyframe: " << frame_to_remove->keyframe_id_ << endl;
     // remove keyframe and landmark observation
     active_keyframes_.erase(frame_to_remove->keyframe_id_);
     for (auto feat : frame_to_remove->left_features_) {
@@ -125,5 +125,5 @@ void Map::cleanMap() {
             ++iter;
         }
     }
-    cout << "Removed " << cnt_landmark_removed << " active landmarks" << endl;
+    //cout << "Removed " << cnt_landmark_removed << " active landmarks" << endl;
 }

@@ -1,7 +1,3 @@
-//
-// Created by guoxt on 19-8-28.
-//
-
 #include "config.h"
 #include "Visual_odometry.h"
 

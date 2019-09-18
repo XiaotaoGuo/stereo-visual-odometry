@@ -31,6 +31,8 @@ public:
     string dataset_root_path_;
     string seq_id_;
 
+    double average_times_;
+
     bool inited_;
 
 };

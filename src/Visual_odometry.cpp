@@ -18,12 +18,13 @@ bool Visual_odometry::init(string data_path, string seq_id) {
     frontend_->setViewer(viewer_);
     frontend_->setMap(map_);
     frontend_->setCameras(cam1_, cam2_);
-    viewer_->SetMap(map_);
+    viewer_->setMap(map_);
 
     backend_->setMap(map_);
     backend_->setCameras(cam1_, cam2_);
 
     current_index = 0;
+    average_times_ = 0.0;
     return true;
 
 
@@ -76,10 +77,17 @@ void Visual_odometry::start() {
     ofstream outfile;
     outfile.open(dataset_root_path_ + seq_id_ + "/result.txt");
     for(int i = 0; i < allFrames_.size(); i++){
+        if(allFrames_[i]->is_keyframe_){
+            outfile << "key: ";
+        }
+        else{
+            outfile << "other: ";
+        }
         auto pose_ = allFrames_[i]->Pose();
         Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> pose_vec = pose_.matrix3x4();
         pose_vec.resize(1,12);
         outfile << pose_vec << "\n";
+
     }
     outfile.close();
     backend_->stop();
@@ -107,7 +115,8 @@ bool Visual_odometry::forward() {
     bool success = frontend_->addFrame(new_frame);
     auto t2 = chrono::steady_clock::now();
     auto time_used = chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-    cout << "VO cost time: " << time_used.count() << " seconds." << endl;
+    average_times_ = (average_times_ * (current_index-1) + time_used.count()) / double(current_index);
+    cout << "VO cost time averaged: " << average_times_ << " seconds for GFTT." << endl;
 
     return success;
 }
