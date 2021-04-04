@@ -1,0 +1,4 @@
+[submodule "ThirdParty/g2o"]
+	path = ThirdParty/g2o
+	url = https://github.com/RainerKuemmerle/g2o.git
+	branch = master
