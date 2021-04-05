@@ -2,3 +2,7 @@
 	path = ThirdParty/g2o
 	url = https://github.com/RainerKuemmerle/g2o.git
 	branch = master
+[submodule "ThirdParty/Sophus"]
+	path = ThirdParty/Sophus
+	url = https://github.com/strasdat/Sophus.git
+	branch = master
