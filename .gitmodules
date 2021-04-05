@@ -6,3 +6,7 @@
 	path = ThirdParty/Sophus
 	url = https://github.com/strasdat/Sophus.git
 	branch = master
+[submodule "ThirdParty/Pangolin"]
+	path = ThirdParty/Pangolin
+	url = https://github.com/stevenlovegrove/Pangolin.git
+	branch = master
