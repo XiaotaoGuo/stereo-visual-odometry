@@ -10,3 +10,7 @@
 	path = ThirdParty/Pangolin
 	url = https://github.com/stevenlovegrove/Pangolin.git
 	branch = master
+[submodule "ThirdParty/googletest"]
+	path = ThirdParty/googletest
+	url = https://github.com/google/googletest.git
+	branch = master
