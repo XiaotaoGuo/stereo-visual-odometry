@@ -1,8 +1,9 @@
 #include <gtest/gtest.h>
-#include <stereo_visual_odometry/io/data_reader.h>
+
+#include "stereo_visual_odometry/io/data_reader.h"
 
 TEST(KittiImageReaderTest, ReadSampleImages) {
-    KittiImagesReader reader("../../data/sample/00", "image_0", "image_1", 0);
+    KittiImagesReader reader("../data/sample/00", "image_0", "image_1", 0);
 
     int expect_num_images = 11;
 
@@ -12,8 +13,9 @@ TEST(KittiImageReaderTest, ReadSampleImages) {
 
     for (int i = 0; i < expect_num_images; ++i) {
         EXPECT_TRUE(reader.NextImages(left_img, right_img));
-        cv::imshow("left", left_img);
-        cv::imshow("right", right_img);
+        cv::Mat frame;
+        cv::hconcat(left_img, right_img, frame);
+        cv::imshow("Frame", frame);
         cv::waitKey(100);
     }
 
