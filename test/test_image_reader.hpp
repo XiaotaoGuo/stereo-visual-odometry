@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "stereo_visual_odometry/io/data_reader.h"
+#include "stereo_visual_odometry/io/data_reader.hpp"
 
 TEST(KittiImageReaderTest, ReadSampleImages) {
     KittiImagesReader reader("../data/sample/00", "image_0", "image_1", 0);
@@ -20,9 +20,4 @@ TEST(KittiImageReaderTest, ReadSampleImages) {
     }
 
     EXPECT_FALSE(reader.NextImages(left_img, right_img));
-}
-
-int main(int argc, char *argv[]) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
 }
