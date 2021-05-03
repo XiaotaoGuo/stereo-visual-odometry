@@ -1,4 +1,4 @@
-#include "stereo_visual_odometry/io/data_reader.h"
+#include "stereo_visual_odometry/io/data_reader.hpp"
 
 #include <iostream>
 #include <sstream>
