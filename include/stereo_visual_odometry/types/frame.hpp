@@ -23,10 +23,12 @@ private:
     std::vector<Feature::Ptr> right_features_;
 
 public:
-    Frame(const cv::Mat& left_image, const cv::Mat& right_image,
+    Frame(int32_t id, const cv::Mat& left_image, const cv::Mat& right_image,
           const Sophus::SE3d pose);
 
     int32_t Id() const { return id_; }
+
+    Sophus::SE3d Pose() const { return pose_; }
 
 private:
 };

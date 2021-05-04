@@ -12,11 +12,11 @@ namespace stereo_visual_odometry {
 class Map {
 public:
     using Ptr = std::shared_ptr<Map>;
-    using WkPtr = std::weak_ptr<Map>;
 
 private:
     std::unordered_map<int32_t, Frame::Ptr> all_frames_;
     std::unordered_map<int32_t, MapPoint::Ptr> all_map_points_;
+    Frame::Ptr latest_frame_;
 
 public:
     Map() = default;
@@ -25,6 +25,7 @@ public:
 
     bool AddFrame(const Frame& frame) {
         all_frames_[frame.Id()] = std::make_shared<Frame>(frame);
+        latest_frame_ = all_frames_[frame.Id()];
         return true;
     }
 
@@ -35,6 +36,8 @@ public:
 
         return true;
     }
+
+    Frame::Ptr GetLatestFrame() const { return latest_frame_; }
 
     std::unordered_map<int32_t, Frame::Ptr> GetAllFrames() const {
         return all_frames_;
