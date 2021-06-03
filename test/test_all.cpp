@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "test_image_reader.hpp"
+#include "test_algorithm.hpp"
+// #include "test_image_reader.hpp"
 #include "test_map_visualizer.hpp"
 
 int main(int argc, char *argv[]) {

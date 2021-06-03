@@ -30,6 +30,8 @@ public:
 
     Sophus::SE3d Pose() const { return pose_; }
 
+    std::pair<cv::Mat, cv::Mat> Images() const { return images_; }
+
 private:
 };
 }  // namespace stereo_visual_odometry

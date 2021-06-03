@@ -2,6 +2,7 @@
 #define TYPES_MAP_H_
 
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 
 #include "stereo_visual_odometry/types/frame.hpp"
@@ -17,6 +18,7 @@ private:
     std::unordered_map<int32_t, Frame::Ptr> all_frames_;
     std::unordered_map<int32_t, MapPoint::Ptr> all_map_points_;
     Frame::Ptr latest_frame_;
+    std::mutex mtx_;
 
 public:
     Map() = default;
@@ -46,6 +48,10 @@ public:
     std::unordered_map<int32_t, MapPoint::Ptr> GetAllMapPoints() const {
         return all_map_points_;
     }
+
+    void Lock() { mtx_.lock(); }
+
+    void Unlock() { mtx_.unlock(); }
 
 private:
 };

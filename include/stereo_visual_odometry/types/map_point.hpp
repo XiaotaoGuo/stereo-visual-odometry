@@ -21,7 +21,7 @@ private:
     Eigen::Vector3d pos_;  // global position
 
 public:
-    MapPoint(int32_t id, const Eigen::Vector3d& pos) : id_(id), pos_(pos) {}
+    MapPoint(int32_t id, const Eigen::Vector3d pos) : id_(id), pos_(pos) {}
 
     int32_t Id() const { return id_; }
 
