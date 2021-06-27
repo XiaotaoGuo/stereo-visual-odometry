@@ -7,7 +7,7 @@ This is my practice project after learning [14 lectures on visual SLAM](https://
 ## Refactory plan
 
 - [ ] testing and visualizaion
-  - [ ] Decouple date reading method to support more dataset
+  - [x] Decouple date reading method to support more dataset
   - [ ] Decouple and change visualizaion framework to show more information
   - [ ] Add testing functionality to calculating
 - [ ] functionaliyu

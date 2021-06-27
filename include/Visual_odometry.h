@@ -2,6 +2,7 @@
 #define STEORO_VISUAL_ODOMETRY_VISUAL_ODOMETRY_H
 
 #include "config.h"
+#include "dataset/data_reader.h"
 
 class Map;
 class FrontEnd;
@@ -14,18 +15,19 @@ public:
     Visual_odometry();
 
     bool init_camera();
-    bool init(string data_path, string seq_id);
+    bool init(string data_path, int32_t seq_id);
     void start();
     bool forward();
     bool stop();
 
-    private:
-    shared_ptr<Camera> cam1_;
-    shared_ptr<Camera> cam2_;
-    shared_ptr<Map> map_;
-    shared_ptr<FrontEnd> frontend_;
-    shared_ptr<BackEnd> backend_;
-    shared_ptr<Viewer> viewer_;
+private:
+    std::shared_ptr<Camera> cam1_;
+    std::shared_ptr<Camera> cam2_;
+    std::shared_ptr<Map> map_;
+    std::shared_ptr<FrontEnd> frontend_;
+    std::shared_ptr<BackEnd> backend_;
+    std::shared_ptr<Viewer> viewer_;
+    DatasetReader::Ptr dataset_reader_;
     int current_index;
 
     string dataset_root_path_;
@@ -34,8 +36,6 @@ public:
     double average_times_;
 
     bool inited_;
-
 };
 
-
-#endif //STEORO_VISUAL_ODOMETRY_VISUAL_ODOMETRY_H
+#endif  // STEORO_VISUAL_ODOMETRY_VISUAL_ODOMETRY_H

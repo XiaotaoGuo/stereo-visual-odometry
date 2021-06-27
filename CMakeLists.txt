@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 # set(CMAKE_CXX_FLAGS "-03")
 set(CMAKE_CXX_STANDARD 14)
@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(steoro_visual_odometry)
 
 
-set(CMAKE_BUILD_TYPE  "Release")
+set(CMAKE_BUILD_TYPE  "Debug")
 
 # add cmake module configuration
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules/g2o)
@@ -16,6 +16,7 @@ find_package(Eigen3 REQUIRED)
 find_package(Sophus REQUIRED)
 find_package(OpenCV 3.0 REQUIRED)
 find_package(Pangolin REQUIRED)
+find_package(Boost REQUIRED filesystem)
 
 message(STATUS "Found eigen3 lib in: " ${EIGEN3_INCLUDE_DIR})
 message(STATUS "Found sophus lib in: " ${Sophus_INCLUDE_DIRS})
@@ -33,6 +34,7 @@ include_directories(${EIGEN3_INCLUDE_DIR}
                     ${Pangolin_INCLUDE_DIRS}
                     ${G2O_INCLUDE_DIR}
                     ${CHOLMOD_INCLUDE_DIR}
+                    ${Boost_INCLUDE_DIR}
                     include)
 
 # for g2o, we manually set its libs
@@ -50,10 +52,43 @@ add_executable(vo vo.cpp
         src/MapPoint.cpp
         src/Camera.cpp
         src/viewer.cpp
-        src/Visual_odometry.cpp)
+        src/Visual_odometry.cpp
+        src/dataset/data_reader.cpp)
+
+add_library(stereo_visual_odometry_lib 
+                src/FrontEnd.cpp
+                src/BackEnd.cpp
+                src/Feature.cpp
+                src/Frame.cpp
+                src/Map.cpp
+                src/MapPoint.cpp
+                src/Camera.cpp
+                src/viewer.cpp
+                src/Visual_odometry.cpp
+                src/dataset/data_reader.cpp)
+
+target_link_libraries(stereo_visual_odometry_lib
+                ${OpenCV_LIBS}
+                ${Boost_LIBRARIES}
+                ${Pangolin_LIBRARIES}
+            )
 
 target_link_libraries(vo
         ${G2O_LIBS}
         ${OpenCV_LIBS}
         ${Sophus_LIBRARIES}
-        ${Pangolin_LIBRARIES})
+        ${Pangolin_LIBRARIES}
+        ${Boost_LIBRARIES})
+
+find_package(GTest REQUIRED)
+
+include_directories(test)
+add_executable(all_test test/run_all_tests.cpp)
+
+target_link_libraries(all_test
+                        ${GTEST_BOTH_LIBRARIES}
+                        pthread
+                        stereo_visual_odometry_lib)
+
+add_test(all_test all_test)
+enable_testing()

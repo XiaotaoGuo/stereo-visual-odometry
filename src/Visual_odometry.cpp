@@ -5,10 +5,8 @@
 
 Visual_odometry::Visual_odometry() {}
 
-bool Visual_odometry::init(string data_path, string seq_id) {
-    dataset_root_path_ = data_path;
-    seq_id_ = seq_id;
-
+bool Visual_odometry::init(string data_path, int32_t seq_id) {
+    dataset_reader_ = std::make_shared<KittiDatasetReader>(data_path, seq_id);
     frontend_ = shared_ptr<FrontEnd>(new FrontEnd);
     backend_ = shared_ptr<BackEnd>(new BackEnd);
     map_ = shared_ptr<Map>(new Map);
@@ -26,68 +24,61 @@ bool Visual_odometry::init(string data_path, string seq_id) {
     current_index = 0;
     average_times_ = 0.0;
     return true;
-
-
 }
 
 bool Visual_odometry::init_camera() {
+    std::vector<std::pair<Eigen::Matrix3d, Eigen::Matrix4d>>
+        vec_intrinsic_extrinsic;
+    dataset_reader_->GetStereoCameraConfig(vec_intrinsic_extrinsic);
 
-    ifstream fin(dataset_root_path_ + seq_id_ + "/calib.txt");
-    if (!fin) {
-        cout << "cannot find " << dataset_root_path_ << seq_id_ << "/calib.txt!" << endl;
+    if (vec_intrinsic_extrinsic.size() < 2) {
+        std::cout << "can't load config!" << std::endl;
         return false;
     }
 
-    int idx = 0;
-    while(idx < 2) {
-        char camera_name[3];
-        for (int k = 0; k < 3; ++k) {
-            fin >> camera_name[k];
-        }
-        double projection_data[12];
-        for (int k = 0; k < 12; ++k) {
-            fin >> projection_data[k];
-        }
+    Eigen::Matrix3d K;
+    Eigen::Vector3d t(0.0, 0.0, 0.0);
 
-        Eigen::Matrix3d K;
-        Eigen::Vector3d t(0.0, 0.0, 0.0);
-        K << projection_data[0], projection_data[1], projection_data[2],
-            projection_data[4], projection_data[5], projection_data[6],
-            projection_data[8], projection_data[9], projection_data[10];
-        t << projection_data[3], projection_data[7], projection_data[11];
-        t = K.inverse() * t;
-        K = K * 0.5;
-        if(idx == 0)
-            cam1_ = shared_ptr<Camera>(new Camera(K(0,0), K(1,1), K(0,2), K(1,2), t.norm(), Sophus::SE3d(Sophus::SO3d(), t )));
-        if(idx == 1)
-            cam2_ = shared_ptr<Camera>(new Camera(K(0,0), K(1,1), K(0,2), K(1,2), t.norm(), Sophus::SE3d(Sophus::SO3d(), t )));
-        idx++;
-    }
+    K = vec_intrinsic_extrinsic[0].first;
+    t = vec_intrinsic_extrinsic[0].second.block<3, 1>(0, 3);
+    t = K.inverse() * t;
+    K = K * 0.5;
 
+    cam1_ = shared_ptr<Camera>(new Camera(K(0, 0), K(1, 1), K(0, 2), K(1, 2),
+                                          t.norm(),
+                                          Sophus::SE3d(Sophus::SO3d(), t)));
+
+    K = vec_intrinsic_extrinsic[1].first;
+    t = vec_intrinsic_extrinsic[1].second.block<3, 1>(0, 3);
+    t = K.inverse() * t;
+    K = K * 0.5;
+
+    cam2_ = shared_ptr<Camera>(new Camera(K(0, 0), K(1, 1), K(0, 2), K(1, 2),
+                                          t.norm(),
+                                          Sophus::SE3d(Sophus::SO3d(), t)));
 }
 
 void Visual_odometry::start() {
-    while(true){
+    while (true) {
         cout << "VO is running" << endl;
-        if(forward() == false){
+        if (forward() == false) {
             break;
         }
     }
     FrameType allFrames_ = map_->getAllFrames();
     ofstream outfile;
     outfile.open(dataset_root_path_ + seq_id_ + "/result.txt");
-    for(int i = 0; i < allFrames_.size(); i++){
-        if(allFrames_[i]->is_keyframe_){
+    for (int i = 0; i < allFrames_.size(); i++) {
+        if (allFrames_[i]->is_keyframe_) {
             outfile << "key: ";
-        }
-        else{
+        } else {
             outfile << "other: ";
         }
         auto pose_ = allFrames_[i]->Pose();
-        Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic, Eigen::RowMajor> pose_vec = pose_.matrix3x4();
-        pose_vec.resize(1,12);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+            pose_vec = pose_.matrix3x4();
+        pose_vec.resize(1, 12);
         outfile << pose_vec << "\n";
-
     }
     outfile.close();
     backend_->stop();
@@ -97,15 +88,15 @@ void Visual_odometry::start() {
 }
 
 bool Visual_odometry::forward() {
-
     cv::Mat left_image, right_image;
-    boost::format fmt("%s/image_%d/%06d.png");
-    left_image = cv::imread((fmt % (dataset_root_path_ + seq_id_) % 0 % current_index).str(), cv::IMREAD_GRAYSCALE);
-    right_image = cv::imread((fmt % (dataset_root_path_ + seq_id_) % 1 % current_index).str(), cv::IMREAD_GRAYSCALE);
-    if(!left_image.cols) return false;
+    dataset_reader_->NextImages(left_image, right_image);
+
+    if (!left_image.cols) return false;
     cv::Mat image_left_resized, image_right_resized;
-    cv::resize(left_image, image_left_resized, cv::Size(), 0.5, 0.5, cv::INTER_NEAREST);
-    cv::resize(right_image, image_right_resized, cv::Size(), 0.5, 0.5, cv::INTER_NEAREST);
+    cv::resize(left_image, image_left_resized, cv::Size(), 0.5, 0.5,
+               cv::INTER_NEAREST);
+    cv::resize(right_image, image_right_resized, cv::Size(), 0.5, 0.5,
+               cv::INTER_NEAREST);
 
     auto new_frame = Frame::CreateFrame();
     new_frame->left_img_ = image_left_resized;
@@ -114,9 +105,13 @@ bool Visual_odometry::forward() {
     auto t1 = chrono::steady_clock::now();
     bool success = frontend_->addFrame(new_frame);
     auto t2 = chrono::steady_clock::now();
-    auto time_used = chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-    average_times_ = (average_times_ * (current_index-1) + time_used.count()) / double(current_index);
-    cout << "VO cost time averaged: " << average_times_ << " seconds for GFTT." << endl;
+    auto time_used =
+        chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+    average_times_ =
+        (average_times_ * (current_index - 1) + time_used.count()) /
+        double(current_index);
+    cout << "VO cost time averaged: " << average_times_ << " seconds for GFTT."
+         << endl;
 
     return success;
 }
