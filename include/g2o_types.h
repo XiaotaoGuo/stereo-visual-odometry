@@ -1,10 +1,9 @@
 #ifndef STEORO_VISUAL_ODOMETRY_FRONTEND_G2O_TYPES_H
 #define STEORO_VISUAL_ODOMETRY_FRONTEND_G2O_TYPES_H
 
-
 /// vertex and edges used in g2o ba
 class VertexPose : public g2o::BaseVertex<6, Sophus::SE3d> {
-   public:
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
     virtual void setToOriginImpl() override { _estimate = Sophus::SE3d(); }
@@ -24,9 +23,11 @@ class VertexPose : public g2o::BaseVertex<6, Sophus::SE3d> {
 
 /// Mappoint Vertex
 class VertexXYZ : public g2o::BaseVertex<3, Eigen::Vector3d> {
-   public:
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    virtual void setToOriginImpl() override { _estimate = Eigen::Vector3d::Zero(); }
+    virtual void setToOriginImpl() override {
+        _estimate = Eigen::Vector3d::Zero();
+    }
 
     virtual void oplusImpl(const double *update) override {
         _estimate[0] += update[0];
@@ -39,9 +40,9 @@ class VertexXYZ : public g2o::BaseVertex<3, Eigen::Vector3d> {
     virtual bool write(std::ostream &out) const override { return true; }
 };
 
-
-class EdgeProjectionPoseOnly : public g2o::BaseUnaryEdge<2, Eigen::Vector2d, VertexPose> {
-   public:
+class EdgeProjectionPoseOnly
+    : public g2o::BaseUnaryEdge<2, Eigen::Vector2d, VertexPose> {
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
     EdgeProjectionPoseOnly(const Eigen::Vector3d &pos, const Eigen::Matrix3d &K)
@@ -64,34 +65,30 @@ class EdgeProjectionPoseOnly : public g2o::BaseUnaryEdge<2, Eigen::Vector2d, Ver
         double X = pos_cam[0];
         double Y = pos_cam[1];
         double Z = pos_cam[2];
-        double Zinv = 1.0 / (Z + 1e-18);//to avoid overfloating
+        double Zinv = 1.0 / (Z + 1e-18);
         double Zinv2 = Zinv * Zinv;
-        double XY = X*Y;
-        double X2 = X*X;
-        double Y2 = Y*Y;
-        Eigen::Matrix<double, 2, 6> dedxi;
-        dedxi << -fx * Zinv, 0, fx * X * Zinv2,
-                fx * XY * Zinv2, -fx - fx * X2 * Zinv2, fx * Y * Zinv,
-                0, -fy * Zinv, fy * Y * Zinv2,
-                fy + fy * Y2 * Zinv2, -fy * XY * Zinv2, -fy * X * Zinv;
-        _jacobianOplusXi = dedxi;
+        _jacobianOplusXi << -fx * Zinv, 0, fx * X * Zinv2, fx * X * Y * Zinv2,
+            -fx - fx * X * X * Zinv2, fx * Y * Zinv, 0, -fy * Zinv,
+            fy * Y * Zinv2, fy + fy * Y * Y * Zinv2, -fy * X * Y * Zinv2,
+            -fy * X * Zinv;
     }
 
     virtual bool read(std::istream &in) override { return true; }
 
     virtual bool write(std::ostream &out) const override { return true; }
 
-   private:
+private:
     Eigen::Vector3d _pos3d;
     Eigen::Matrix3d _K;
 };
 
 class EdgeProjection
     : public g2o::BaseBinaryEdge<2, Eigen::Vector2d, VertexPose, VertexXYZ> {
-   public:
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-    EdgeProjection(const Eigen::Matrix3d &K, const Sophus::SE3d &cam_ext) : _K(K) {
+    EdgeProjection(const Eigen::Matrix3d &K, const Sophus::SE3d &cam_ext)
+        : _K(K) {
         _cam_ext = cam_ext;
     }
 
@@ -117,17 +114,12 @@ class EdgeProjection
         double Z = pos_cam[2];
         double Zinv = 1.0 / (Z + 1e-18);
         double Zinv2 = Zinv * Zinv;
-        double XY = X*Y;
-        double X2 = X*X;
-        double Y2 = Y*Y;
-        Eigen::Matrix<double, 2, 6> dedxi;
-        dedxi << -fx * Zinv, 0, fx * X * Zinv2,
-                fx * XY * Zinv2, -fx - fx * X2 * Zinv2, fx * Y * Zinv,
-                0, -fy * Zinv, fy * Y * Zinv2,
-                fy + fy * Y2 * Zinv2, -fy * XY * Zinv2, -fy * X * Zinv;
-        _jacobianOplusXi = dedxi;
+        _jacobianOplusXi << -fx * Zinv, 0, fx * X * Zinv2, fx * X * Y * Zinv2,
+            -fx - fx * X * X * Zinv2, fx * Y * Zinv, 0, -fy * Zinv,
+            fy * Y * Zinv2, fy + fy * Y * Y * Zinv2, -fy * X * Y * Zinv2,
+            -fy * X * Zinv;
 
-        _jacobianOplusXj = dedxi.block<2, 3>(0, 0) *
+        _jacobianOplusXj = _jacobianOplusXi.block<2, 3>(0, 0) *
                            _cam_ext.rotationMatrix() * T.rotationMatrix();
     }
 
@@ -135,10 +127,9 @@ class EdgeProjection
 
     virtual bool write(std::ostream &out) const override { return true; }
 
-   private:
+private:
     Eigen::Matrix3d _K;
     Sophus::SE3d _cam_ext;
 };
-
 
 #endif

@@ -65,6 +65,7 @@ void Visual_odometry::start() {
             break;
         }
     }
+
     FrameType allFrames_ = map_->getAllFrames();
     ofstream outfile;
     outfile.open(dataset_root_path_ + seq_id_ + "/result.txt");
@@ -110,8 +111,9 @@ bool Visual_odometry::forward() {
     average_times_ =
         (average_times_ * (current_index - 1) + time_used.count()) /
         double(current_index);
-    cout << "VO cost time averaged: " << average_times_ << " seconds for GFTT."
-         << endl;
+    cout << "time used: " << time_used.count()
+         << ", VO cost time averaged: " << average_times_
+         << " seconds for GFTT." << endl;
 
     return success;
 }

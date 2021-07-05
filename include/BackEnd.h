@@ -2,11 +2,9 @@
 #define STEORO_VISUAL_ODOMETRY_BACKEND_H
 
 #include <thread>
-#include "config.h"
 #include "Camera.h"
 #include "Map.h"
-
-//class Map;
+#include "config.h"
 
 class BackEnd {
 public:
@@ -31,8 +29,6 @@ private:
     atomic<bool> backend_running_;
 
     CamPtr cam_left_ = nullptr, cam_right_ = nullptr;
-
 };
 
-
-#endif //STEORO_VISUAL_ODOMETRY_BACKEND_H
+#endif  // STEORO_VISUAL_ODOMETRY_BACKEND_H

@@ -1,19 +1,19 @@
 #ifndef STEORO_VISUAL_ODOMETRY_VIEWER_H
 #define STEORO_VISUAL_ODOMETRY_VIEWER_H
 
-#include <thread>
 #include <pangolin/pangolin.h>
+#include <thread>
 
-#include "config.h"
 #include "Frame.h"
 #include "Map.h"
+#include "config.h"
 
 class Map;
 class Frame;
 class MapPoint;
 
 class Viewer {
-   public:
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
     Viewer();
@@ -26,7 +26,7 @@ class Viewer {
 
     void UpdateMap();
 
-   private:
+private:
     void ThreadLoop();
 
     void DrawFrame(FramePtr frame, const float* color);
@@ -35,11 +35,20 @@ class Viewer {
 
     void FollowCurrentFrame(pangolin::OpenGlRenderState& vis_camera);
 
+    void UpdateTopDownTrajectory();
+
     /// plot the features in current frame into an image
-    cv::Mat PlotFrameImage();
+    cv::Mat PlotFrameImage(const FramePtr frame);
 
     FramePtr current_frame_ = nullptr;
+    FramePtr last_frame_ = nullptr;
     MapPtr map_ = nullptr;
+
+    double window_width = (1024 + 620);
+    double window_height = 768;
+    double width_ = 1241 / 2;
+    double height_ = 376 / 2;
+    cv::Mat top_down_tajectory;
 
     thread viewer_thread_;
     bool viewer_running_ = true;

@@ -4,41 +4,37 @@
 
 Map::Map() {}
 
-void Map::insertFrame(FramePtr frame){
-    if(frames_.find(frame->id_) == frames_.end()){
+void Map::insertFrame(FramePtr frame) {
+    if (frames_.find(frame->id_) == frames_.end()) {
         frames_.insert(make_pair(frame->id_, frame));
-    }
-    else{ //basically won't be used
+    } else {  // basically won't be used
         keyframes_[frame->id_] = frame;
     }
 }
 
 void Map::insertKeyFrame(FramePtr frame) {
     current_frame_ = frame;
-    if(keyframes_.find(frame->keyframe_id_) == keyframes_.end()){
+    if (keyframes_.find(frame->keyframe_id_) == keyframes_.end()) {
         keyframes_.insert(make_pair(frame->keyframe_id_, frame));
         active_keyframes_.insert(make_pair(frame->keyframe_id_, frame));
-    }
-    else{
+    } else {
         keyframes_[frame->keyframe_id_] = frame;
         active_keyframes_[frame->keyframe_id_] = frame;
     }
 
-    if(active_keyframes_.size() > num_active_keyframes_){
+    if (active_keyframes_.size() > num_active_keyframes_) {
         removeOldKeyframe();
     }
 }
 
 void Map::insertMapPoint(shared_ptr<MapPoint> mappoint) {
-    if(landmarks_.find(mappoint->id_) == landmarks_.end()){
+    if (landmarks_.find(mappoint->id_) == landmarks_.end()) {
         landmarks_.insert(make_pair(mappoint->id_, mappoint));
         active_landmarks_.insert(make_pair(mappoint->id_, mappoint));
-    }
-    else{
+    } else {
         landmarks_[mappoint->id_] = mappoint;
         active_landmarks_[mappoint->id_] = mappoint;
     }
-
 }
 
 LandmarkType Map::getAllMapPoints() {
@@ -51,7 +47,7 @@ FrameType Map::getAllKeyframes() {
     return keyframes_;
 }
 
-LandmarkType Map::getActiveMapPoints(){
+LandmarkType Map::getActiveMapPoints() {
     unique_lock<std::mutex> lck(data_mutex);
     return active_landmarks_;
 }
@@ -71,10 +67,11 @@ void Map::removeOldKeyframe() {
     // find nearest (or furthest if can't find the near frame) frame to delete
     double max_dis = 0, min_dis = INT_MAX;
     double max_kf_id = 0, min_kf_id = 0;
-    auto Twc = current_frame_->Pose().inverse(); // current -> world
+    auto Twc = current_frame_->Pose().inverse();  // current -> world
     for (auto& kf : active_keyframes_) {
         if (kf.second == current_frame_) continue;
-        auto dis = (kf.second->Pose() * Twc).log().norm(); //calculate distance
+        auto dis = (kf.second->Pose() * Twc).log().norm();  // calculate
+                                                            // distance
         if (dis > max_dis) {
             max_dis = dis;
             max_kf_id = kf.first;
@@ -95,7 +92,7 @@ void Map::removeOldKeyframe() {
         frame_to_remove = keyframes_.at(max_kf_id);
     }
 
-    //cout << "remove keyframe: " << frame_to_remove->keyframe_id_ << endl;
+    // cout << "remove keyframe: " << frame_to_remove->keyframe_id_ << endl;
     // remove keyframe and landmark observation
     active_keyframes_.erase(frame_to_remove->keyframe_id_);
     for (auto feat : frame_to_remove->left_features_) {
@@ -117,7 +114,8 @@ void Map::removeOldKeyframe() {
 
 void Map::cleanMap() {
     int cnt_landmark_removed = 0;
-    for (auto iter = active_landmarks_.begin();iter != active_landmarks_.end();) {
+    for (auto iter = active_landmarks_.begin();
+         iter != active_landmarks_.end();) {
         if (iter->second->observed_times_ == 0) {
             iter = active_landmarks_.erase(iter);
             cnt_landmark_removed++;
@@ -125,5 +123,6 @@ void Map::cleanMap() {
             ++iter;
         }
     }
-    //cout << "Removed " << cnt_landmark_removed << " active landmarks" << endl;
+    // cout << "Removed " << cnt_landmark_removed << " active landmarks" <<
+    // endl;
 }
