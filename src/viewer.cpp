@@ -159,8 +159,8 @@ void Viewer::UpdateTopDownTrajectory() {
     top_down_tajectory.setTo(cv::Scalar(0, 0, 0));
 
     static double resolution = 1;
-    static double top_left_x = -0.5 * top_down_tajectory.cols * resolution;
-    static double top_left_y = -0.5 * top_down_tajectory.rows * resolution;
+    double top_left_x = -0.5 * top_down_tajectory.cols * resolution;
+    double top_left_y = -0.5 * top_down_tajectory.rows * resolution;
 
     cv::putText(top_down_tajectory,             // target image
                 "Trajectory in top-down view",  // text
@@ -169,14 +169,24 @@ void Viewer::UpdateTopDownTrajectory() {
                 cv::FONT_HERSHEY_DUPLEX, 1.0,
                 CV_RGB(118, 185, 0),  // font color
                 2);
-
+    bool extended = false;
     for (auto frame : allFrames_) {
         double point_x =
             (frame.second->Pose().translation().x() - top_left_x) / resolution;
         double point_y =
             (frame.second->Pose().translation().z() - top_left_y) / resolution;
+        if (point_x < 0.25 * top_down_tajectory.cols ||
+            point_x > 0.75 * top_down_tajectory.cols ||
+            point_y < 0.25 * top_down_tajectory.rows ||
+            point_y > 0.75 * top_down_tajectory.cols) {
+            extended = true;
+        }
         cv::Point2d loc(point_x, point_y);
         cv::circle(top_down_tajectory, loc, 0, cv::Scalar(0, 255, 210), 2);
+    }
+
+    if (extended) {
+        resolution *= 2;
     }
 }
 

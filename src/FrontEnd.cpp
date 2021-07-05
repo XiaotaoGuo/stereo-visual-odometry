@@ -2,11 +2,11 @@
 #include <opencv2/opencv.hpp>
 
 FrontEnd::FrontEnd() {
-    detector_ = cv::GFTTDetector::create(150, 0.01, 20);
+    detector_ = cv::GFTTDetector::create(num_features_, 0.01, 20);
     // detector_ = cv::FastFeatureDetector::create(50);
-    // detector_ = cv::ORB::create(100);
-    num_features_init_ = 50;
-    num_features_ = 150;
+    // detector_ = cv::ORB::create();
+    // num_features_init_ = 50;
+    // num_features_ = 150;
 }
 
 void FrontEnd::setMap(MapPtr map) { map_ = map; }
@@ -51,12 +51,7 @@ bool FrontEnd::Track() {
         current_frame_->SetPose(relative_motion_ * last_frame_->Pose());
     }
     int num_track_last = trackLastFrame();
-    auto t1 = std::chrono::steady_clock::now();
     tracking_inliers_ = estimateCurrentPose();
-    auto t2 = std::chrono::steady_clock::now();
-    auto time_used =
-        std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-    std::cout << "estimate cost: " << time_used.count() << std::endl;
 
     if (tracking_inliers_ > num_features_tracking_) {
         // tracking good
@@ -170,8 +165,6 @@ int FrontEnd::estimateCurrentPose() {
     int index = 1;
     vector<EdgeProjectionPoseOnly *> edges;
     vector<FeaturePtr> features;
-    std::cout << "left feature count: " << current_frame_->left_features_.size()
-              << std::endl;
     for (size_t i = 0; i < current_frame_->left_features_.size(); ++i) {
         auto mp = current_frame_->left_features_[i]->map_point_.lock();
         if (mp) {
@@ -192,21 +185,12 @@ int FrontEnd::estimateCurrentPose() {
     }
 
     // estimate the Pose the determine the outliers
-    auto t1 = std::chrono::steady_clock::now();
-    std::cout << "feature count: " << features.size() << std::endl;
-    std::cout << "edge count: " << edges.size() << std::endl;
     const double chi2_th = 5.991;
     int cnt_outlier = 0;
     for (int iteration = 0; iteration < 4; ++iteration) {
-        auto t11 = std::chrono::steady_clock::now();
         vertex_pose->setEstimate(current_frame_->Pose());
         optimizer.initializeOptimization();
         optimizer.optimize(10);
-        auto t12 = std::chrono::steady_clock::now();
-        auto time_used =
-            std::chrono::duration_cast<std::chrono::duration<double>>(t12 -
-                                                                      t11);
-        std::cout << "optimization cost: " << time_used.count() << std::endl;
         cnt_outlier = 0;
 
         // count the outliers
@@ -228,13 +212,7 @@ int FrontEnd::estimateCurrentPose() {
                 e->setRobustKernel(nullptr);
             }
         }
-        std::cout << "num of outliers: " << cnt_outlier << std::endl;
     }
-
-    auto t2 = std::chrono::steady_clock::now();
-    auto time_used =
-        std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-    std::cout << "estimate the Pose cost: " << time_used.count() << std::endl;
 
     // cout << "Outlier/Inlier in pose estimating: " << cnt_outlier << "/" <<
     // features.size() - cnt_outlier << endl;
@@ -293,13 +271,12 @@ int FrontEnd::trackLastFrame() {
         }
     }
 
-    // cout << "Find " << num_good_pts << "good map points in the last image."
-    // << endl;
+    cout << "Find " << num_good_pts << " good map points in the last image."
+         << endl;
     return num_good_pts;
 }
 
 bool FrontEnd::StereoInit() {
-    auto t1 = chrono::steady_clock::now();
     int num_features_left = detectFeatures();
     int num_coor_features = findFeaturesInRight();
     if (num_coor_features < num_features_init_) {
@@ -313,16 +290,9 @@ bool FrontEnd::StereoInit() {
             viewer_->AddCurrentFrame(current_frame_);
             viewer_->UpdateMap();
         }
-        auto t2 = chrono::steady_clock::now();
-        auto time_used =
-            chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-        std::cout << "init cost: " << time_used.count() << std::endl;
+
         return true;
     }
-    auto t2 = chrono::steady_clock::now();
-    auto time_used =
-        chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-    std::cout << "init cost: " << time_used.count() << std::endl;
     return false;
 }
 
