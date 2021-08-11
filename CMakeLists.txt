@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(steoro_visual_odometry)
 
 
-set(CMAKE_BUILD_TYPE  Release)
+set(CMAKE_BUILD_TYPE  Debug)
 set(CMAKE_CXX_FLAGS "-std=c++14 -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE  "-std=c++14 -O3 -fopenmp -pthread")
 
@@ -16,7 +16,7 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules/g2o)
 
 find_package(Eigen3 REQUIRED)
 find_package(Sophus REQUIRED)
-find_package(OpenCV 3.0 REQUIRED)
+find_package(OpenCV REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(Boost REQUIRED filesystem)
 
